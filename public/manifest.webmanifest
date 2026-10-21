@@ -1,0 +1,30 @@
+{
+  "name": "Desenvolvimento — Família De Cesaro",
+  "short_name": "Desenvolvimento",
+  "description": "Plataforma de Desenvolvimento da Família De Cesaro — Legado e Futuro",
+  "start_url": "/desenvolvimento/inicio",
+  "scope": "/desenvolvimento/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#03254A",
+  "theme_color": "#03254A",
+  "icons": [
+    {
+      "src": "/desenvolvimento/assets/img/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/desenvolvimento/assets/img/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/desenvolvimento/assets/img/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

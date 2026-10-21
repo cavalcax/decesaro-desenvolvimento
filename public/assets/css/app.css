@@ -1,0 +1,589 @@
+/**
+ * PLATAFORMA DE DESENVOLVIMENTO DA FAMÍLIA DE CESARO
+ * LEGADO E FUTURO — ESTILOS INSTITUCIONAIS
+ */
+
+:root {
+  --color-navy-950: #0a1826;
+  --color-navy-900: #03254A;
+  --color-navy-800: #163650;
+  --color-navy-700: #1b3b5f;
+  --color-navy-600: #254d78;
+
+  --color-gold-600: #b8860b;
+  --color-gold-500: #c59b27;
+  --color-gold-400: #d4af37;
+  --color-gold-300: #e5c058;
+  --color-gold-100: #fbf5e6;
+
+  --bg-page: #f8f9fc;
+  --bg-card: #ffffff;
+  --bg-card-secondary: #f1f5f9;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border-subtle: #e2e8f0;
+  --shadow-card: 0 4px 12px -2px rgba(15, 37, 55, 0.08), 0 2px 6px -1px rgba(15, 37, 55, 0.04);
+  --shadow-hover: 0 10px 25px -3px rgba(15, 37, 55, 0.12), 0 4px 10px -2px rgba(15, 37, 55, 0.06);
+}
+
+.dark {
+  --bg-page: #03254A;
+  --bg-card: #0f2233;
+  --bg-card-secondary: #142c42;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --border-subtle: #1e3a54;
+  --shadow-card: 0 4px 12px -2px rgba(0, 0, 0, 0.4);
+  --shadow-hover: 0 10px 25px -3px rgba(0, 0, 0, 0.6);
+}
+
+body {
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+}
+
+/* Tipografia e Títulos Institucionais */
+.font-brand {
+  font-family: 'Cinzel', 'Playfair Display', Georgia, serif;
+}
+
+/* Estilos de Cartões */
+.card-decesaro {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 1rem;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card-hoverable:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+  border-color: rgba(197, 155, 39, 0.4);
+}
+
+/* Badges e Pílulas */
+.badge-gold {
+  background-color: rgba(197, 155, 39, 0.12);
+  color: #b8860b;
+  border: 1px solid rgba(197, 155, 39, 0.3);
+}
+
+.dark .badge-gold {
+  background-color: rgba(212, 175, 55, 0.15);
+  color: #f1d479;
+  border-color: rgba(212, 175, 55, 0.3);
+}
+
+.badge-navy {
+  background-color: rgba(27, 59, 95, 0.1);
+  color: var(--color-navy-700);
+  border: 1px solid rgba(27, 59, 95, 0.3);
+}
+
+.dark .badge-navy {
+  background-color: rgba(27, 59, 95, 0.4);
+  color: #93c5fd;
+  border-color: rgba(147, 197, 253, 0.2);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-page);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #1e3a54;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Select2 Customizações Institucionais */
+.select2-container--default .select2-selection--single {
+  height: 42px !important;
+  padding: 6px 12px !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 0.75rem !important;
+  background-color: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+  color: var(--text-main) !important;
+  padding-left: 0 !important;
+  font-size: 0.875rem !important;
+  line-height: normal !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 40px !important;
+  right: 8px !important;
+}
+
+.select2-dropdown {
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 0.75rem !important;
+  box-shadow: var(--shadow-hover) !important;
+  overflow: hidden !important;
+  z-index: 9999 !important;
+}
+
+.select2-container--default .select2-search--dropdown .select2-search__field {
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 0.5rem !important;
+  background-color: var(--bg-card-secondary) !important;
+  color: var(--text-main) !important;
+  padding: 6px 10px !important;
+  font-size: 0.875rem !important;
+}
+
+.select2-container--default .select2-results__option {
+  padding: 8px 12px !important;
+  font-size: 0.875rem !important;
+  color: var(--text-main) !important;
+}
+
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+  background-color: #c59b27 !important;
+  color: #0f172a !important;
+  font-weight: 600 !important;
+}
+
+.select2-container--default .select2-results__option[aria-selected=true] {
+  background-color: rgba(197, 155, 39, 0.2) !important;
+  color: var(--text-main) !important;
+}
+
+/* SweetAlert2 Tema Institucional */
+.swal2-popup {
+  border-radius: 1.25rem !important;
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border-subtle) !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}
+
+.swal2-title {
+  color: var(--text-main) !important;
+  font-family: 'Cinzel', serif !important;
+}
+
+.swal2-html-container {
+  color: var(--text-muted) !important;
+}
+
+/* FullCalendar Customizações */
+.fc {
+  font-family: 'Inter', sans-serif !important;
+}
+
+.fc .fc-toolbar-title {
+  font-family: 'Cinzel', serif !important;
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  color: var(--text-main) !important;
+}
+
+.fc .fc-button {
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-subtle) !important;
+  color: var(--text-main) !important;
+  border-radius: 0.6rem !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  padding: 0.4rem 0.8rem !important;
+  text-transform: capitalize !important;
+  box-shadow: none !important;
+  transition: all 0.15s ease !important;
+}
+
+.fc .fc-button:hover {
+  background-color: var(--bg-card-secondary) !important;
+  border-color: #c59b27 !important;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
+  background-color: #c59b27 !important;
+  border-color: #c59b27 !important;
+  color: #ffffff !important;
+}
+
+.fc-theme-standard td,
+.fc-theme-standard th {
+  border-color: var(--border-subtle) !important;
+}
+
+.fc .fc-col-header-cell-cushion {
+  color: var(--text-muted) !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  padding: 8px 4px !important;
+}
+
+.fc .fc-daygrid-day-number {
+  color: var(--text-main) !important;
+  font-weight: 600 !important;
+  font-size: 0.85rem !important;
+  padding: 4px 6px !important;
+}
+
+/* Destaque destacado para eventos no calendário mensal */
+.fc .fc-daygrid-event {
+  border-radius: 6px !important;
+  padding: 4px 8px !important;
+  margin-top: 3px !important;
+  margin-bottom: 3px !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25) !important;
+  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease !important;
+  color: #ffffff !important;
+  white-space: normal !important;
+}
+
+.fc .fc-daygrid-event:hover {
+  filter: brightness(1.2) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35) !important;
+}
+
+.fc .fc-daygrid-event .fc-event-title {
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  white-space: normal !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  line-height: 1.25 !important;
+}
+
+.fc .fc-daygrid-event .fc-event-time {
+  display: none !important;
+}
+
+/* FullCalendar - Visualização de Lista (Correção do bug no Modo Escuro e Claro) */
+.fc .fc-list {
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 0.85rem !important;
+  overflow: hidden !important;
+  background-color: var(--bg-card) !important;
+}
+
+.fc .fc-list-table {
+  border: none !important;
+  width: 100% !important;
+}
+
+.fc .fc-list-day,
+.fc tr.fc-list-day,
+.fc th.fc-list-day,
+.fc .fc-list-day th,
+.fc .fc-list-day-cushion,
+.fc .fc-cell-shaded,
+.fc-theme-standard th.fc-list-day,
+.fc-theme-standard .fc-list-day-cushion {
+  background-color: var(--bg-card-secondary) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+.fc .fc-list-day-cushion {
+  padding: 10px 16px !important;
+}
+
+.fc .fc-list-day-text,
+.fc .fc-list-day-side-text,
+.fc .fc-list-day-cushion a {
+  color: var(--text-main) !important;
+  font-weight: 700 !important;
+  font-size: 0.85rem !important;
+  text-decoration: none !important;
+}
+
+.fc .fc-list-event {
+  background-color: transparent !important;
+  transition: background-color 0.15s ease !important;
+  cursor: pointer !important;
+}
+
+.fc .fc-list-event td {
+  border-color: var(--border-subtle) !important;
+  padding: 12px 16px !important;
+  vertical-align: middle !important;
+  background-color: transparent !important;
+}
+
+.fc .fc-list-event:hover td {
+  background-color: var(--bg-card-secondary) !important;
+}
+
+.fc .fc-list-event-time {
+  color: var(--text-muted) !important;
+  font-size: 0.8rem !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+}
+
+.fc .fc-list-event-title a,
+.fc .fc-list-event-title {
+  color: var(--text-main) !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+}
+
+.fc .fc-list-event:hover .fc-list-event-title a,
+.fc .fc-list-event:hover .fc-list-event-title {
+  color: #c59b27 !important;
+}
+
+.fc .fc-list-empty {
+  background-color: var(--bg-card) !important;
+  color: var(--text-muted) !important;
+  padding: 3rem 1rem !important;
+  text-align: center !important;
+  font-size: 0.875rem !important;
+}
+
+/* Regras Específicas Dark Mode para FullCalendar */
+.dark .fc {
+  --fc-page-bg-color: #03254A;
+  --fc-neutral-bg-color: #163650;
+  --fc-neutral-text-color: #ffffff;
+  --fc-border-color: rgba(255, 255, 255, 0.1);
+  --fc-list-event-hover-bg-color: rgba(255, 255, 255, 0.06);
+}
+
+.dark .fc .fc-list {
+  background-color: #03254A !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .fc .fc-list-table {
+  background-color: transparent !important;
+}
+
+.dark .fc .fc-list-day,
+.dark .fc tr.fc-list-day,
+.dark .fc th.fc-list-day,
+.dark .fc .fc-list-day th,
+.dark .fc .fc-list-day-cushion,
+.dark .fc .fc-cell-shaded,
+.dark .fc-theme-standard th.fc-list-day,
+.dark .fc-theme-standard .fc-list-day-cushion {
+  background-color: #163650 !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .fc .fc-list-day-text,
+.dark .fc .fc-list-day-side-text,
+.dark .fc .fc-list-day-cushion a {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  text-decoration: none !important;
+}
+
+.dark .fc .fc-list-event td {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: transparent !important;
+  color: #f8fafc !important;
+}
+
+.dark .fc .fc-list-event:hover td {
+  background-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+.dark .fc .fc-list-event-title a,
+.dark .fc .fc-list-event-title {
+  color: #f8fafc !important;
+}
+
+.dark .fc .fc-list-event:hover .fc-list-event-title a,
+.dark .fc .fc-list-event:hover .fc-list-event-title {
+  color: #c59b27 !important;
+}
+
+.dark .fc .fc-list-event-time {
+  color: #94a3b8 !important;
+}
+
+.dark .fc .fc-list-empty {
+  background-color: #03254A !important;
+  color: #94a3b8 !important;
+}
+
+.dark .fc-theme-standard td,
+.dark .fc-theme-standard th {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .fc .fc-daygrid-day.fc-day-today {
+  background-color: rgba(197, 155, 39, 0.08) !important;
+}
+
+/* Player de Vídeo Customizado HTML5 */
+.video-container {
+  position: relative;
+  background-color: #000;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+}
+
+.video-container video {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Global Spinner Overlay */
+#global-spinner-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(10, 24, 38, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+#global-spinner-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ==========================================================================
+   Autofill / Autocomplete - Preservação da Cor Original dos Campos
+   ========================================================================== */
+
+/* 1. Campos Globais (Páginas Internas, Modais, Perfil) */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #0f172a !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #142c42 inset !important;
+  box-shadow: 0 0 0 1000px #142c42 inset !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  caret-color: #f8fafc !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* 2. Formulários de Autenticação (Login, Recuperar Senha, Redefinir Senha) */
+/* No Tema Claro (Card Branco): os campos são claros (#f8fafc) com texto escuro (#0f172a) */
+.auth-card {
+  color-scheme: light;
+}
+
+.auth-card input,
+.auth-input {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+.auth-card input:-webkit-autofill,
+.auth-card input:-webkit-autofill:hover,
+.auth-card input:-webkit-autofill:focus,
+.auth-card input:-webkit-autofill:active,
+.auth-input:-webkit-autofill,
+.auth-input:-webkit-autofill:hover,
+.auth-input:-webkit-autofill:focus,
+.auth-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #f8fafc inset !important;
+  box-shadow: 0 0 0 1000px #f8fafc inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #0f172a !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* No Tema Escuro (Card Escuro): os campos são escuros (#162e47) com texto branco (#ffffff) */
+.dark .auth-card {
+  color-scheme: dark;
+}
+
+.dark .auth-card input,
+.dark .auth-input {
+  background-color: #162e47 !important;
+  color: #ffffff !important;
+}
+
+.dark .auth-card input:-webkit-autofill,
+.dark .auth-card input:-webkit-autofill:hover,
+.dark .auth-card input:-webkit-autofill:focus,
+.dark .auth-card input:-webkit-autofill:active,
+.dark .auth-input:-webkit-autofill,
+.dark .auth-input:-webkit-autofill:hover,
+.dark .auth-input:-webkit-autofill:focus,
+.dark .auth-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #162e47 inset !important;
+  box-shadow: 0 0 0 1000px #162e47 inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* 3. Player de Vídeo Institucional (HTML5 e Google Drive Iframe) */
+.video-player-container {
+  width: 100% !important;
+  aspect-ratio: 16 / 9;
+  min-height: 420px;
+}
+
+@media (min-width: 640px) {
+  .video-player-container {
+    min-height: 500px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .video-player-container {
+    min-height: 560px;
+  }
+}
+
+.video-player-container iframe,
+.video-player-container video {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  display: block;
+}

@@ -1,0 +1,11 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Bloquear acesso a arquivos e pastas sensíveis
+    RewriteRule ^\.env.*$ - [F,L]
+    RewriteRule ^(app|config|database|storage|scripts|tests) - [F,L]
+
+    # Encaminhar requisições para a pasta public/
+    RewriteRule ^$ public/ [L]
+    RewriteRule (.*) public/$1 [L]
+</IfModule>
