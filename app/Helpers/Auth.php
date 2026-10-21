@@ -13,16 +13,27 @@ class Auth
 {
     private static ?array $currentUser = null;
 
+    public static function resetUserState(): void
+    {
+        self::$currentUser = null;
+    }
+
     public static function check(): bool
     {
         Security::initSession();
-        return !empty($_SESSION['user_id']);
+        if (!empty($_SESSION['user_id'])) {
+            return true;
+        }
+
+        return self::tryAutoLoginFromToken();
     }
 
     public static function id(): ?int
     {
-        Security::initSession();
-        return isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
+        if (self::check()) {
+            return isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
+        }
+        return null;
     }
 
     public static function user(): ?array
@@ -82,10 +93,12 @@ class Auth
         }
     }
 
-    public static function login(array $user): void
+    public static function login(array $user, bool $remember = false): void
     {
         Security::initSession();
-        session_regenerate_id(true);
+        if (!headers_sent() && session_status() === PHP_SESSION_ACTIVE) {
+            @session_regenerate_id(true);
+        }
 
         $_SESSION['user_id'] = (int)$user['id'];
         $_SESSION['user_nome'] = $user['nome'];
@@ -94,6 +107,13 @@ class Auth
         $_SESSION['logged_at'] = time();
 
         self::$currentUser = null;
+
+        // Tratar persistência "Lembrar de mim"
+        if ($remember) {
+            self::issueRememberToken((int)$user['id']);
+        } else {
+            self::revokeCurrentRememberToken();
+        }
 
         // Registrar log de acesso
         try {
@@ -113,8 +133,12 @@ class Auth
     public static function logout(): void
     {
         Security::initSession();
+
+        // Revogar token de persistência se existir
+        self::revokeCurrentRememberToken();
+
         $_SESSION = [];
-        if (ini_get("session.use_cookies")) {
+        if (!headers_sent() && ini_get("session.use_cookies")) {
             $params = session_get_cookie_params();
             setcookie(
                 session_name(),
@@ -126,8 +150,158 @@ class Auth
                 $params["httponly"]
             );
         }
-        session_destroy();
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            @session_destroy();
+        }
         self::$currentUser = null;
+    }
+
+    public static function issueRememberToken(int $userId): void
+    {
+        try {
+            $selector = bin2hex(random_bytes(16)); // 32 caracteres hex
+            $validator = bin2hex(random_bytes(32)); // 64 caracteres hex
+            $tokenHash = hash('sha256', $validator);
+            $expiraEm = date('Y-m-d H:i:s', time() + (86400 * 30)); // 30 dias
+
+            $pdo = Database::getConnection();
+            $table = Database::table('lembrar_token');
+            $stmt = $pdo->prepare("INSERT INTO `{$table}` (id_usuario, selector, token_hash, expira_em, criado_em, ultimo_uso) VALUES (?, ?, ?, ?, NOW(), NOW())");
+            $stmt->execute([$userId, $selector, $tokenHash, $expiraEm]);
+
+            $cookieValue = "{$selector}:{$validator}";
+            if (!headers_sent()) {
+                setcookie('decesaro_remember', $cookieValue, [
+                    'expires' => time() + (86400 * 30),
+                    'path' => '/',
+                    'domain' => '',
+                    'secure' => Security::isHttps(),
+                    'httponly' => true,
+                    'samesite' => 'Lax'
+                ]);
+            }
+            $_COOKIE['decesaro_remember'] = $cookieValue;
+        } catch (\Throwable $e) {
+            error_log("Erro ao emitir token de persistência: " . $e->getMessage());
+        }
+    }
+
+    public static function tryAutoLoginFromToken(): bool
+    {
+        $cookie = $_COOKIE['decesaro_remember'] ?? '';
+        if (empty($cookie) || !str_contains($cookie, ':')) {
+            return false;
+        }
+
+        [$selector, $validator] = explode(':', $cookie, 2);
+        if (empty($selector) || empty($validator) || strlen($selector) !== 32 || strlen($validator) !== 64) {
+            self::clearRememberCookie();
+            return false;
+        }
+
+        try {
+            $pdo = Database::getConnection();
+            $tokenTable = Database::table('lembrar_token');
+            $stmt = $pdo->prepare("SELECT id, id_usuario, token_hash, expira_em FROM `{$tokenTable}` WHERE selector = ? AND expira_em > NOW() LIMIT 1");
+            $stmt->execute([$selector]);
+            $record = $stmt->fetch();
+
+            if (!$record) {
+                self::clearRememberCookie();
+                return false;
+            }
+
+            $computedHash = hash('sha256', $validator);
+            if (!hash_equals($record['token_hash'], $computedHash)) {
+                $stmtDel = $pdo->prepare("DELETE FROM `{$tokenTable}` WHERE id = ?");
+                $stmtDel->execute([(int)$record['id']]);
+                self::clearRememberCookie();
+                return false;
+            }
+
+            $userTable = Database::table('usuario');
+            $stmtUser = $pdo->prepare("SELECT id, nome, email, data_nascimento, tipo, familia, geracao, foto, status, criado_em FROM `{$userTable}` WHERE id = ? AND status = 'Ativo' LIMIT 1");
+            $stmtUser->execute([(int)$record['id_usuario']]);
+            $user = $stmtUser->fetch();
+
+            if (!$user) {
+                $stmtDel = $pdo->prepare("DELETE FROM `{$tokenTable}` WHERE id = ?");
+                $stmtDel->execute([(int)$record['id']]);
+                self::clearRememberCookie();
+                return false;
+            }
+
+            Security::initSession();
+            if (!headers_sent() && session_status() === PHP_SESSION_ACTIVE) {
+                @session_regenerate_id(true);
+            }
+
+            $_SESSION['user_id'] = (int)$user['id'];
+            $_SESSION['user_nome'] = $user['nome'];
+            $_SESSION['user_email'] = $user['email'];
+            $_SESSION['user_tipo'] = $user['tipo'];
+            $_SESSION['logged_at'] = time();
+
+            $user['idade'] = self::calculateAge($user['data_nascimento']);
+            $user['faixa_etaria'] = self::formatAgeBracket($user['idade']);
+            self::$currentUser = $user;
+
+            $newExpires = date('Y-m-d H:i:s', time() + (86400 * 30));
+            $stmtUp = $pdo->prepare("UPDATE `{$tokenTable}` SET ultimo_uso = NOW(), expira_em = ? WHERE id = ?");
+            $stmtUp->execute([$newExpires, (int)$record['id']]);
+
+            if (!headers_sent()) {
+                setcookie('decesaro_remember', $cookie, [
+                    'expires' => time() + (86400 * 30),
+                    'path' => '/',
+                    'domain' => '',
+                    'secure' => Security::isHttps(),
+                    'httponly' => true,
+                    'samesite' => 'Lax'
+                ]);
+            }
+            $_COOKIE['decesaro_remember'] = $cookie;
+
+            return true;
+
+        } catch (\Throwable $e) {
+            error_log("Erro no auto-login via remember token: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public static function revokeCurrentRememberToken(): void
+    {
+        $cookie = $_COOKIE['decesaro_remember'] ?? '';
+        if (!empty($cookie) && str_contains($cookie, ':')) {
+            [$selector] = explode(':', $cookie, 2);
+            if (!empty($selector)) {
+                try {
+                    $pdo = Database::getConnection();
+                    $tokenTable = Database::table('lembrar_token');
+                    $stmt = $pdo->prepare("DELETE FROM `{$tokenTable}` WHERE selector = ?");
+                    $stmt->execute([$selector]);
+                } catch (\Throwable) {}
+            }
+        }
+        self::clearRememberCookie();
+    }
+
+    public static function clearRememberCookie(): void
+    {
+        if (isset($_COOKIE['decesaro_remember'])) {
+            if (!headers_sent()) {
+                setcookie('decesaro_remember', '', [
+                    'expires' => time() - 42000,
+                    'path' => '/',
+                    'domain' => '',
+                    'secure' => Security::isHttps(),
+                    'httponly' => true,
+                    'samesite' => 'Lax'
+                ]);
+            }
+            unset($_COOKIE['decesaro_remember']);
+        }
     }
 
     public static function calculateAge(string $birthDate): int

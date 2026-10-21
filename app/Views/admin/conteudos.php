@@ -228,21 +228,10 @@ async function saveConteudo(e) {
   } catch {}
 }
 
-  try {
-    const res = await apiRequest('/desenvolvimento/admin/conteudos/salvar', {
-      method: 'POST',
-      data: payload
-    });
-    closeModal();
-    showToast('success', res.message);
-    tableInstance.load();
-  } catch {}
-}
-
 async function deleteConteudo(id) {
   const result = await Swal.fire({
     title: 'Excluir Conteúdo?',
-    text: 'Esta ação excluirá o conteúdo, os vídeos relacionados e as associações com níveis.',
+    text: 'Esta ação excluirá o conteúdo e os vídeos relacionados.',
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#d33',

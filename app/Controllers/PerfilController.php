@@ -25,9 +25,9 @@ class PerfilController
         $prefTable = Database::table('preferencia_usuario');
 
         // Buscar preferência do usuário
-        $stmtPref = $pdo->prepare("SELECT tema, notificacoes_email FROM `{$prefTable}` WHERE id_usuario = ? LIMIT 1");
+        $stmtPref = $pdo->prepare("SELECT tema, notificacoes_email, notificacoes_push FROM `{$prefTable}` WHERE id_usuario = ? LIMIT 1");
         $stmtPref->execute([$userId]);
-        $pref = $stmtPref->fetch() ?: ['tema' => 'claro', 'notificacoes_email' => 'S'];
+        $pref = $stmtPref->fetch() ?: ['tema' => 'claro', 'notificacoes_email' => 'S', 'notificacoes_push' => 'S'];
 
         // Checar elegibilidade de cada uma das 4 raias
         $stmtR = $pdo->query("SELECT id, descricao, slug FROM `{$raiaTable}` ORDER BY ordem ASC");
@@ -132,16 +132,21 @@ class PerfilController
 
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $tema = in_array($input['tema'] ?? '', ['claro', 'escuro']) ? $input['tema'] : 'claro';
-        $notif = ($input['notificacoes_email'] ?? '') === 'N' ? 'N' : 'S';
+        $notifEmail = ($input['notificacoes_email'] ?? '') === 'N' ? 'N' : 'S';
+        $notifPush = ($input['notificacoes_push'] ?? '') === 'N' ? 'N' : 'S';
 
         $pdo = Database::getConnection();
         $table = Database::table('preferencia_usuario');
         $stmt = $pdo->prepare("
-            INSERT INTO `{$table}` (id_usuario, tema, notificacoes_email, atualizado_em)
-            VALUES (?, ?, ?, NOW())
-            ON DUPLICATE KEY UPDATE tema = VALUES(tema), notificacoes_email = VALUES(notificacoes_email), atualizado_em = NOW()
+            INSERT INTO `{$table}` (id_usuario, tema, notificacoes_email, notificacoes_push, atualizado_em)
+            VALUES (?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE 
+                tema = VALUES(tema), 
+                notificacoes_email = VALUES(notificacoes_email), 
+                notificacoes_push = VALUES(notificacoes_push), 
+                atualizado_em = NOW()
         ");
-        $stmt->execute([$userId, $tema, $notif]);
+        $stmt->execute([$userId, $tema, $notifEmail, $notifPush]);
 
         Response::json(['success' => true, 'message' => 'Preferências salvas com sucesso.']);
     }

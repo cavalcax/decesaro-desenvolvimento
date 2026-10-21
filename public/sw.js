@@ -52,6 +52,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Para requisições de navegação de páginas (HTML dinâmico), priorizar rede para garantir integridade da sessão
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/desenvolvimento/offline.html'))
+    );
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
@@ -67,11 +75,79 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => {
-        // Fallback: se offline e for navegação de página, retornar offline.html
-        if (event.request.mode === 'navigate') {
-          return caches.match('/desenvolvimento/offline.html');
-        }
         return caches.match(event.request);
       })
+  );
+});
+
+// ==========================================
+// Evento: Recebimento de Push Notification
+// ==========================================
+self.addEventListener('push', (event) => {
+  let data = {
+    title: 'Legado e Futuro — De Cesaro',
+    body: 'Você recebeu uma nova notificação.',
+    icon: '/desenvolvimento/assets/img/apple-touch-icon.png',
+    badge: '/desenvolvimento/assets/img/favicon-96x96.png',
+    url: '/desenvolvimento/inicio',
+    data: {
+      url: '/desenvolvimento/inicio'
+    }
+  };
+
+  if (event.data) {
+    try {
+      const json = event.data.json();
+      data = Object.assign(data, json);
+      if (json.url && (!data.data || !data.data.url)) {
+        data.data = Object.assign({}, data.data, { url: json.url });
+      }
+    } catch (e) {
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: data.icon || '/desenvolvimento/assets/img/apple-touch-icon.png',
+    badge: data.badge || '/desenvolvimento/assets/img/favicon-96x96.png',
+    vibrate: [100, 50, 100],
+    data: data.data || { url: data.url || '/desenvolvimento/inicio' },
+    tag: 'decesaro-push-' + (data.id || Date.now()),
+    renotify: true
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+// ==========================================
+// Evento: Clique na Notificação Push
+// ==========================================
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const targetUrl = (event.notification.data && event.notification.data.url)
+    ? event.notification.data.url
+    : '/desenvolvimento/inicio';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Se houver uma janela aberta do mesmo domínio, foca nela e navega para o link
+      for (const client of windowClients) {
+        if (client.url && 'focus' in client) {
+          client.focus();
+          if ('navigate' in client) {
+            return client.navigate(targetUrl);
+          }
+          return client;
+        }
+      }
+      // Se nenhuma janela estiver aberta, abre uma nova
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
   );
 });

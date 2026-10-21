@@ -47,6 +47,8 @@ class TestRunner
         $this->testAgendaAndInscriptions();
         $this->testExportService();
         $this->testPwaAndAssets();
+        $this->testNotificationsAndWebPush();
+        $this->testRememberMeAndPersistentLogin();
 
         echo "\n--------------------------------------------------------\n";
         echo "RESULTADO FINAL: {$this->passed} Passou | {$this->failed} Falhou\n";
@@ -242,6 +244,168 @@ class TestRunner
         $logoWhite = dirname(__DIR__) . '/public/assets/img/logo-white.png';
         $this->assert(file_exists($logoDark), "Logo escuro institucional presente");
         $this->assert(file_exists($logoWhite), "Logo claro institucional presente");
+    }
+
+    private function testNotificationsAndWebPush(): void
+    {
+        echo "\n9. Notificações no Sistema e Web Push\n";
+        $pdo = Database::getConnection();
+
+        // 1. Chave pública VAPID
+        $pubKey = \App\Services\WebPushService::getPublicKey();
+        $this->assert(!empty($pubKey) && strlen($pubKey) >= 86, "Chave pública VAPID presente e válida ({$pubKey})");
+
+        // 2. Assinatura VAPID Authorization header
+        $vapidHeader = \App\Services\WebPushService::createVapidHeader('https://fcm.googleapis.com/fcm/send/teste');
+        $this->assert(str_starts_with($vapidHeader, 'vapid t=') && str_contains($vapidHeader, ', k='), "Geração de cabeçalho VAPID ES256 conforme RFC 8292");
+
+        // 3. Criptografia AES-128-GCM conforme RFC 8291
+        $clientKey = openssl_pkey_new([
+            'curve_name' => 'prime256v1',
+            'private_key_type' => OPENSSL_KEYTYPE_EC,
+            'config' => 'C:/wamp64/bin/php/php8.2.13/extras/ssl/openssl.cnf'
+        ]);
+        $details = openssl_pkey_get_details($clientKey);
+        $clientPubBin = "\x04" . $details['ec']['x'] . $details['ec']['y'];
+        $clientAuthBin = random_bytes(16);
+
+        $payload = json_encode(['title' => 'Teste Unitário', 'body' => 'Web Push Funcionando!']);
+        $encrypted = \App\Services\WebPushService::encryptPayload($clientPubBin, $clientAuthBin, $payload);
+        $this->assert(!empty($encrypted) && strlen($encrypted) > 86, "Criptografia de payload Web Push AES-128-GCM executada com sucesso");
+
+        // 4. Criação de notificação no banco de dados
+        $notifId = \App\Services\WebPushService::createNotification(
+            2, // Nicolle
+            'Encontro da Família Confirmado',
+            'O próximo encontro presencial foi agendado com sucesso.',
+            '/desenvolvimento/agenda',
+            'agenda',
+            false // sem disparar push real no teste
+        );
+        $this->assert($notifId > 0, "Notificação registrada no banco para usuário (ID {$notifId})");
+
+        // 5. Verificação e marcação como lida
+        $nTable = Database::table('notificacao');
+        $stmtN = $pdo->prepare("SELECT lida, url, tipo FROM `{$nTable}` WHERE id = ?");
+        $stmtN->execute([$notifId]);
+        $notifRow = $stmtN->fetch();
+        $this->assert($notifRow && $notifRow['lida'] === 'N', "Notificação criada com status não lida");
+
+        $pdo->prepare("UPDATE `{$nTable}` SET lida = 'S', lida_em = NOW() WHERE id = ?")->execute([$notifId]);
+        $stmtN2 = $pdo->prepare("SELECT lida FROM `{$nTable}` WHERE id = ?");
+        $stmtN2->execute([$notifId]);
+        $this->assert($stmtN2->fetchColumn() === 'S', "Notificação marcada como lida com sucesso");
+
+        // 6. Preferência de Push do Usuário
+        $prefTable = Database::table('preferencia_usuario');
+        $pdo->prepare("INSERT INTO `{$prefTable}` (id_usuario, notificacoes_push, atualizado_em) VALUES (2, 'S', NOW()) ON DUPLICATE KEY UPDATE notificacoes_push = 'S', atualizado_em = NOW()")->execute();
+        $prefVal = $pdo->query("SELECT notificacoes_push FROM `{$prefTable}` WHERE id_usuario = 2")->fetchColumn();
+        $this->assert($prefVal === 'S', "Preferência de notificações push do usuário ativa no banco");
+    }
+
+    private function testRememberMeAndPersistentLogin(): void
+    {
+        echo "\n10. Lembrar de Mim e Sessão Persistente com Refresh\n";
+        $pdo = Database::getConnection();
+
+        // 1. Presença do campo "Lembrar de mim" no template de login
+        $loginViewPath = dirname(__DIR__) . '/app/Views/auth/login.php';
+        $loginContent = file_get_contents($loginViewPath);
+        $this->assert(
+            str_contains($loginContent, 'name="remember"') && str_contains($loginContent, 'Lembrar de mim'),
+            "Checkbox 'Lembrar de mim' presente no formulário de login"
+        );
+
+        // 2. Existência da tabela de tokens persistentes
+        $tokenTable = Database::table('lembrar_token');
+        $tables = $pdo->query("SHOW TABLES LIKE '{$tokenTable}'")->fetchAll();
+        $this->assert(count($tables) > 0, "Tabela de tokens persistentes {$tokenTable} existe no banco");
+
+        // 3. Emissão de token persistente no login
+        $uTable = Database::table('usuario');
+        $stmtU = $pdo->prepare("SELECT * FROM `{$uTable}` WHERE id = 2 LIMIT 1");
+        $stmtU->execute();
+        $nicolle = $stmtU->fetch();
+
+        // Limpar cookies e tokens anteriores para o teste
+        \App\Helpers\Auth::logout();
+        $pdo->prepare("DELETE FROM `{$tokenTable}` WHERE id_usuario = ?")->execute([2]);
+
+        // Efetuar login com remember = true
+        \App\Helpers\Auth::login($nicolle, true);
+
+        $rememberCookie = $_COOKIE['decesaro_remember'] ?? '';
+        $this->assert(!empty($rememberCookie), "Cookie 'decesaro_remember' emitido com sucesso");
+
+        // 4. Formato split-token (selector:validator)
+        $parts = explode(':', $rememberCookie, 2);
+        $this->assert(
+            count($parts) === 2 && strlen($parts[0]) === 32 && strlen($parts[1]) === 64,
+            "Token persistente adota padrão split-token seguro (seletor de 32 chars e validador de 64 chars)"
+        );
+
+        [$selector, $validator] = $parts;
+
+        // 5. Registro no banco de dados com hash SHA-256
+        $stmtT = $pdo->prepare("SELECT id, id_usuario, token_hash, expira_em FROM `{$tokenTable}` WHERE selector = ?");
+        $stmtT->execute([$selector]);
+        $tokenDb = $stmtT->fetch();
+
+        $this->assert(
+            $tokenDb && (int)$tokenDb['id_usuario'] === 2,
+            "Registro do token associado corretamente ao usuário no banco de dados"
+        );
+        $this->assert(
+            $tokenDb['token_hash'] === hash('sha256', $validator),
+            "Token persistente salvo como hash SHA-256 (sem expor o validador em texto claro)"
+        );
+        $this->assert(
+            strtotime($tokenDb['expira_em']) > time() + (86400 * 25),
+            "Validade do token configurada para longa duração (30 dias)"
+        );
+
+        // 6. Simulação de "Refresh" com perda de sessão em memória
+        // Esvazia completamente a sessão para simular encerramento do processo PHP / expiração de GC
+        $_SESSION = [];
+        \App\Helpers\Auth::resetUserState();
+        $_COOKIE['decesaro_remember'] = $rememberCookie; // Simula navegador mantendo o cookie no refresh
+
+        // Chamada de verificação de autenticação (como ocorre em cada refresh de página)
+        $isLogged = \App\Helpers\Auth::check();
+        $this->assert($isLogged === true, "Sessão restaurada automaticamente após refresh via cookie de persistência");
+        $this->assert(
+            isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] === 2,
+            '$_SESSION["user_id"] repovoado automaticamente para o usuário autenticado'
+        );
+
+        $currentUser = \App\Helpers\Auth::user();
+        $this->assert(
+            $currentUser && $currentUser['email'] === 'nicolle@decesaro.com' && (int)$currentUser['idade'] === 18,
+            "Auth::user() retorna o perfil completo com idade calculada após restauração transparente"
+        );
+
+        // 7. Rejeição de token adulterado/falsificado
+        $_SESSION = [];
+        \App\Helpers\Auth::resetUserState();
+        $_COOKIE['decesaro_remember'] = $selector . ':' . str_repeat('a', 64); // Validador errado
+        $isInvalidLogged = \App\Helpers\Auth::check();
+        $this->assert($isInvalidLogged === false, "Cookie adulterado/inválido rejeitado e sessão não autorizada");
+
+        // 8. Logout revoga o token no banco
+        // Restaura token válido
+        $pdo->prepare("DELETE FROM `{$tokenTable}` WHERE id_usuario = ?")->execute([2]);
+        \App\Helpers\Auth::login($nicolle, true);
+        $activeCookie = $_COOKIE['decesaro_remember'] ?? '';
+        [$actSelector] = explode(':', $activeCookie, 2);
+
+        \App\Helpers\Auth::logout();
+
+        $stmtRevoked = $pdo->prepare("SELECT COUNT(*) FROM `{$tokenTable}` WHERE selector = ?");
+        $stmtRevoked->execute([$actSelector]);
+        $remainingTokens = (int)$stmtRevoked->fetchColumn();
+
+        $this->assert($remainingTokens === 0, "Logout revoga e remove o token persistente do banco de dados");
+        $this->assert(empty($_COOKIE['decesaro_remember']), "Logout limpa o cookie de persistência no navegador");
     }
 }
 

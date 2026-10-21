@@ -80,7 +80,7 @@
     <!-- Gráfico 1: Participantes por Família -->
     <div class="card-decesaro p-6">
       <h3 class="text-sm font-bold font-serif text-slate-900 dark:text-white mb-1">
-        Participantes por Ramo Familiar
+        Participantes por Núcleo Familiar
       </h3>
       <p class="text-xs text-slate-400 mb-4">Distribuição dos membros cadastrados</p>
       <div class="h-64">
@@ -134,7 +134,8 @@
               <td class="py-2.5 px-3 font-mono text-slate-400"><?= \App\Helpers\Format::dateTime($act['data_hora']) ?>
               </td>
               <td class="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-200">
-                <?= \App\Helpers\Security::e($act['usuario_nome'] ?? 'Sistema') ?></td>
+                <?= \App\Helpers\Security::e($act['usuario_nome'] ?? 'Sistema') ?>
+              </td>
               <td class="py-2.5 px-3">
                 <span
                   class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
@@ -165,7 +166,7 @@
       new Chart(ctxFam, {
         type: 'bar',
         data: {
-          labels: famLabels.map(f => 'Família ' + f),
+          labels: famLabels.map(f => 'Núcleo ' + f),
           datasets: [{
             label: 'Participantes',
             data: famData,

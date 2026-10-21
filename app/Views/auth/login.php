@@ -43,14 +43,9 @@
   </div>
 
   <div>
-    <div class="flex items-center justify-between mb-1">
-      <label for="password" class="block text-xs font-semibold text-slate-700 dark:text-slate-200">
-        Senha
-      </label>
-      <a href="/desenvolvimento/recuperar-senha" class="text-xs text-amber-600 dark:text-amber-400 hover:underline">
-        Esqueceu a senha?
-      </a>
-    </div>
+    <label for="password" class="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">
+      Senha
+    </label>
     <div class="relative">
       <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
         <i class="fa-solid fa-lock text-sm"></i>
@@ -59,6 +54,20 @@
         placeholder="••••••••"
         class="auth-input w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 dark:bg-[#162e47] border border-slate-200 dark:border-slate-700/80 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all">
     </div>
+  </div>
+
+  <div class="flex items-center justify-between pt-0.5">
+    <label for="remember" class="inline-flex items-center gap-2 cursor-pointer select-none group">
+      <input type="checkbox" id="remember" name="remember" value="1"
+        <?= !empty($remember) ? 'checked' : '' ?>
+        class="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-amber-500 focus:ring-amber-500/40 bg-slate-50 dark:bg-[#162e47] cursor-pointer transition-colors">
+      <span class="text-xs text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+        Lembrar de mim
+      </span>
+    </label>
+    <a href="/desenvolvimento/recuperar-senha" class="text-xs text-amber-600 dark:text-amber-400 hover:underline">
+      Esqueceu a senha?
+    </a>
   </div>
 
   <div class="pt-2">

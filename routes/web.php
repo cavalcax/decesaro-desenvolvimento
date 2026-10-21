@@ -18,6 +18,7 @@ use App\Helpers\Router;
 // ==========================================
 Router::get('/login', [AuthController::class, 'showLogin']);
 Router::post('/login', [AuthController::class, 'login']);
+Router::get('/logout', [AuthController::class, 'logout']);
 Router::post('/logout', [AuthController::class, 'logout']);
 Router::get('/recuperar-senha', [AuthController::class, 'showForgot']);
 Router::post('/recuperar-senha', [AuthController::class, 'sendForgot']);
@@ -64,6 +65,15 @@ Router::get('/api/agenda/eventos', [AgendaController::class, 'apiEventos']);
 Router::post('/api/agenda/inscrever', [AgendaController::class, 'apiInscrever']);
 Router::post('/api/agenda/cancelar-inscricao', [AgendaController::class, 'apiCancelarInscricao']);
 
+// Notificações e Web Push
+Router::get('/api/notificacoes', [ApiController::class, 'notificacoes']);
+Router::post('/api/notificacoes/ler', [ApiController::class, 'notificacaoMarcarLida']);
+Router::post('/api/notificacoes/ler-todas', [ApiController::class, 'notificacaoMarcarTodasLidas']);
+Router::get('/api/push/public-key', [ApiController::class, 'pushPublicKey']);
+Router::post('/api/push/subscribe', [ApiController::class, 'pushSubscribe']);
+Router::post('/api/push/unsubscribe', [ApiController::class, 'pushUnsubscribe']);
+Router::post('/api/push/test', [ApiController::class, 'pushTest']);
+
 // ==========================================
 // Área Administrativa (Comitê de Desenvolvimento)
 // ==========================================
@@ -99,6 +109,10 @@ Router::get('/admin/agenda', [AdminController::class, 'agenda']);
 Router::post('/admin/agenda/salvar', [AdminController::class, 'agendaSalvar']);
 Router::get('/admin/agenda/inscritos/{id}', [AdminController::class, 'agendaInscritos']);
 Router::post('/admin/agenda/presenca', [AdminController::class, 'agendaMarcarPresenca']);
+
+// Central de Notificações e Push
+Router::get('/admin/notificacoes', [AdminController::class, 'notificacoes']);
+Router::post('/admin/notificacoes/enviar', [AdminController::class, 'notificacaoEnviar']);
 
 // Relatórios e Auditoria
 Router::get('/admin/relatorios', [AdminController::class, 'relatorios']);

@@ -6,30 +6,41 @@ namespace App\Helpers;
 
 class Security
 {
+    public static function isHttps(): bool
+    {
+        return (
+            (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+            (!empty($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443) ||
+            (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+        );
+    }
+
     public static function initSession(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
-            $isHttps = (
-                (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
-                (!empty($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) ||
-                (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
-            );
+            $isHttps = self::isHttps();
 
-            session_name(\Config\SecurityConfig::sessionName());
+            if (!headers_sent()) {
+                session_name(\Config\SecurityConfig::sessionName());
 
-            session_set_cookie_params([
-                'lifetime' => \Config\SecurityConfig::sessionLifetime(),
-                'path' => '/',
-                'domain' => '',
-                'secure' => $isHttps,
-                'httponly' => true,
-                'samesite' => 'Strict',
-            ]);
+                $lifetime = \Config\SecurityConfig::sessionLifetime();
 
-            ini_set('session.use_strict_mode', '1');
-            ini_set('session.use_only_cookies', '1');
+                ini_set('session.gc_maxlifetime', (string)$lifetime);
+                ini_set('session.cookie_lifetime', (string)$lifetime);
+                ini_set('session.use_strict_mode', '1');
+                ini_set('session.use_only_cookies', '1');
 
-            session_start();
+                session_set_cookie_params([
+                    'lifetime' => $lifetime,
+                    'path' => '/',
+                    'domain' => '',
+                    'secure' => $isHttps,
+                    'httponly' => true,
+                    'samesite' => 'Lax',
+                ]);
+            }
+
+            @session_start();
         }
     }
 

@@ -39,6 +39,9 @@
   <link rel="icon" type="image/png" sizes="96x96" href="/desenvolvimento/assets/img/favicon-96x96.png">
   <link rel="apple-touch-icon" href="/desenvolvimento/assets/img/apple-touch-icon.png">
   <link rel="manifest" href="/desenvolvimento/manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="De Cesaro">
 
   <!-- Fontes Google (Inter & Playfair/Cinzel) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -137,8 +140,17 @@
             class="hidden dark:block h-14 sm:h-[74px] w-auto object-contain transition-transform">
         </a>
 
-        <!-- Ações do Cabeçalho: Notificações, Tema, Perfil -->
-        <div class="flex items-center gap-3 sm:gap-4">
+        <!-- Ações do Cabeçalho: PWA, Tema, Notificações, Perfil -->
+        <div class="flex items-center gap-2 sm:gap-3.5">
+          <!-- Botão Instalar PWA -->
+          <button id="pwa-install-btn" type="button"
+            class="inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 hover:bg-amber-500 text-amber-700 hover:text-slate-950 dark:bg-amber-400/10 dark:hover:bg-amber-400 dark:text-amber-300 dark:hover:text-slate-950 border border-amber-500/30 dark:border-amber-400/30 transition-all shadow-sm group"
+            title="Instalar Aplicativo (PWA)" aria-label="Instalar Aplicativo">
+            <i
+              class="fa-solid fa-mobile-screen-button text-xs sm:text-sm group-hover:scale-110 transition-transform"></i>
+            <span class="hidden sm:inline font-medium">Instalar App</span>
+          </button>
+
           <!-- Botão Alternar Tema -->
           <button id="theme-toggle-btn"
             class="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
@@ -147,13 +159,14 @@
           </button>
 
           <?php if ($currentUser): ?>
-            <!-- Sino de Eventos / Notificações -->
-            <a href="/desenvolvimento/agenda"
-              class="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300 relative"
-              title="Agenda e Notificações">
-              <i class="fa-regular fa-bell text-sm"></i>
-              <span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-500"></span>
-            </a>
+            <!-- Sino de Notificações com Badge Dinâmico -->
+            <button id="notif-bell-btn" type="button"
+              class="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300 relative group cursor-pointer"
+              title="Minhas Notificações" aria-label="Abrir Notificações">
+              <i class="fa-regular fa-bell text-sm group-hover:scale-110 transition-transform"></i>
+              <span id="notif-badge"
+                class="hidden absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-slate-950 text-[10px] font-extrabold flex items-center justify-center shadow-md animate-pulse">0</span>
+            </button>
 
             <!-- Avatar do Usuário e Dados -->
             <div class="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-700">
@@ -168,7 +181,7 @@
                     <?= \App\Helpers\Security::e($currentUser['nome']) ?>
                   </span>
                   <span class="text-[10px] text-slate-500 dark:text-slate-400">
-                    <?= \App\Helpers\Security::e($currentUser['geracao']) ?> • Família
+                    <?= \App\Helpers\Security::e($currentUser['geracao']) ?> • Núcleo
                     <?= \App\Helpers\Security::e($currentUser['familia']) ?>
                   </span>
                 </div>
@@ -314,6 +327,10 @@
               class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center gap-1.5 font-medium border border-white/10 whitespace-nowrap">
               <i class="fa-solid fa-calendar text-amber-400"></i><span>Agenda</span>
             </a>
+            <a href="/desenvolvimento/admin/notificacoes"
+              class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center gap-1.5 font-medium border border-white/10 whitespace-nowrap">
+              <i class="fa-solid fa-paper-plane text-amber-400"></i><span>Notificações</span>
+            </a>
             <a href="/desenvolvimento/admin/relatorios"
               class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-navy-950 font-bold transition-all shadow-md flex items-center justify-center gap-1.5 whitespace-nowrap">
               <i class="fa-solid fa-file-pdf"></i><span>Relatórios</span>
@@ -342,9 +359,185 @@
 
   <!-- Scripts Principais -->
   <script src="/desenvolvimento/assets/js/api.js?v=<?= filemtime(BASE_PATH . '/public/assets/js/api.js') ?>"></script>
-  <script src="/desenvolvimento/assets/js/tables.js?v=<?= filemtime(BASE_PATH . '/public/assets/js/tables.js') ?>"></script>
-  <script src="/desenvolvimento/assets/js/video-player.js?v=<?= filemtime(BASE_PATH . '/public/assets/js/video-player.js') ?>"></script>
+  <script
+    src="/desenvolvimento/assets/js/tables.js?v=<?= filemtime(BASE_PATH . '/public/assets/js/tables.js') ?>"></script>
+  <script
+    src="/desenvolvimento/assets/js/video-player.js?v=<?= filemtime(BASE_PATH . '/public/assets/js/video-player.js') ?>"></script>
   <script src="/desenvolvimento/assets/js/app.js?v=<?= filemtime(BASE_PATH . '/public/assets/js/app.js') ?>"></script>
+
+  <!-- Modal de Notificações do Usuário -->
+  <div id="notifications-modal"
+    class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div
+      class="bg-white dark:bg-slate-800 rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden animate-in fade-in duration-200 relative max-h-[90vh]">
+
+      <!-- Cabeçalho do Modal -->
+      <div
+        class="p-5 pb-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-3 bg-slate-50/70 dark:bg-slate-900/40">
+        <div class="flex items-center gap-2.5">
+          <div
+            class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+            <i class="fa-regular fa-bell text-base"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-base font-bold font-serif text-slate-900 dark:text-white leading-tight">Notificações</h3>
+              <span id="notif-modal-unread-count"
+                class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300">0
+                novas</span>
+            </div>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">Comunicados, novidades e alertas da plataforma</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <button type="button" id="notif-mark-all-btn"
+            class="text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline px-2 py-1 rounded-lg hover:bg-amber-500/10 transition-colors"
+            title="Marcar todas como lidas">
+            Marcar lidas
+          </button>
+          <button type="button" id="notif-modal-close"
+            class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors"
+            aria-label="Fechar">
+            <i class="fa-solid fa-xmark text-base"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros Rápidos (Todas / Não Lidas) -->
+      <div
+        class="px-5 py-2.5 bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+        <div
+          class="flex items-center gap-1 bg-white dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/70 dark:border-slate-700">
+          <button type="button" id="notif-filter-all"
+            class="notif-tab px-3 py-1 rounded-lg font-bold text-xs bg-amber-500 text-slate-950 transition-all">Todas</button>
+          <button type="button" id="notif-filter-unread"
+            class="notif-tab px-3 py-1 rounded-lg font-medium text-xs text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all">Não
+            lidas</button>
+        </div>
+        <span id="notif-filter-stats" class="text-[11px] text-slate-400">0 registros</span>
+      </div>
+
+      <!-- Lista de Notificações com rolagem suave -->
+      <div id="notif-items-container" class="p-4 space-y-2.5 overflow-y-auto max-h-[440px]">
+        <!-- Itens inseridos via JavaScript -->
+        <div class="py-12 text-center text-slate-400 text-xs">
+          <div class="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-2">
+          </div>
+          <p>Buscando notificações...</p>
+        </div>
+      </div>
+
+      <!-- Rodapé do Modal -->
+      <div
+        class="p-3.5 bg-slate-50 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-xs">
+        <a href="/desenvolvimento/perfil#preferencias-push"
+          class="inline-flex items-center gap-1.5 text-slate-500 hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400 transition-colors text-[11px] font-medium">
+          <i class="fa-solid fa-gear text-xs"></i>
+          <span>Gerenciar alertas no perfil</span>
+        </a>
+        <button type="button" id="notif-modal-ok"
+          class="px-4 py-1.5 rounded-xl bg-navy-900 hover:bg-navy-800 dark:bg-amber-500 dark:hover:bg-amber-600 text-white dark:text-slate-950 font-bold text-xs shadow-sm transition-all">
+          Fechar
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal Passo a Passo de Instalação PWA no iOS (Safari / iPhone / iPad) -->
+  <div id="pwa-ios-modal"
+    class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div
+      class="bg-white dark:bg-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 animate-in fade-in duration-200 relative">
+
+      <!-- Cabeçalho do Modal -->
+      <div class="flex items-start justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-700">
+        <div class="flex items-center gap-3">
+          <img src="/desenvolvimento/assets/img/apple-touch-icon.png" alt="Legado e Futuro"
+            class="w-12 h-12 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 object-cover">
+          <div>
+            <h3 class="text-base font-bold font-serif text-slate-900 dark:text-white leading-snug">Instalar no iPhone /
+              iPad</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Adicione o atalho à Tela de Início</p>
+          </div>
+        </div>
+        <button type="button" id="pwa-ios-modal-close"
+          class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg p-1 transition-colors"
+          aria-label="Fechar">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Passo a Passo Ilustrado -->
+      <div class="mt-5 space-y-3.5 text-xs">
+        <!-- Passo 1 -->
+        <div
+          class="flex items-start gap-3.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+          <div
+            class="w-7 h-7 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold flex items-center justify-center text-xs shrink-0 mt-0.5">
+            1
+          </div>
+          <div class="flex-1">
+            <p class="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
+              No navegador Safari do seu dispositivo iOS, toque no botão <strong>Compartilhar</strong> na barra inferior
+              (ou superior no iPad):
+            </p>
+            <div
+              class="inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 font-semibold text-xs shadow-sm">
+              <i class="fa-solid fa-arrow-up-from-bracket text-amber-500 text-sm"></i>
+              <span>Compartilhar</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Passo 2 -->
+        <div
+          class="flex items-start gap-3.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+          <div
+            class="w-7 h-7 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold flex items-center justify-center text-xs shrink-0 mt-0.5">
+            2
+          </div>
+          <div class="flex-1">
+            <p class="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
+              Deslize o menu de opções para baixo e toque em <strong>"Adicionar à Tela de Início"</strong>:
+            </p>
+            <div
+              class="inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 font-semibold text-xs shadow-sm">
+              <i class="fa-regular fa-square-plus text-amber-500 text-sm"></i>
+              <span>Adicionar à Tela de Início</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Passo 3 -->
+        <div
+          class="flex items-start gap-3.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+          <div
+            class="w-7 h-7 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold flex items-center justify-center text-xs shrink-0 mt-0.5">
+            3
+          </div>
+          <div class="flex-1">
+            <p class="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
+              No canto superior direito da tela, toque em <strong>Adicionar</strong>.
+            </p>
+            <p class="text-[11px] text-amber-600 dark:text-amber-400 font-semibold mt-1">
+              ✓ O aplicativo será instalado como app nativo em tela cheia!
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rodapé do Modal -->
+      <div class="mt-6 pt-4 border-t border-slate-100 dark:border-slate-700 flex justify-end">
+        <button type="button" id="pwa-ios-modal-ok"
+          class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-navy-900 hover:bg-navy-800 dark:bg-amber-500 dark:hover:bg-amber-600 text-white dark:text-slate-950 font-bold text-xs shadow-md transition-all">
+          Entendi
+        </button>
+      </div>
+
+    </div>
+  </div>
 
 </body>
 

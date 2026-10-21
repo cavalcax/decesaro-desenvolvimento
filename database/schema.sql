@@ -199,6 +199,7 @@ CREATE TABLE IF NOT EXISTS `ctdesenvolvimento_decesaro_preferencia_usuario` (
   `id_usuario` INT UNSIGNED NOT NULL,
   `tema` ENUM('claro', 'escuro') NOT NULL DEFAULT 'claro',
   `notificacoes_email` CHAR(1) NOT NULL DEFAULT 'S',
+  `notificacoes_push` CHAR(1) NOT NULL DEFAULT 'S',
   `atualizado_em` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id_usuario`),
   CONSTRAINT `fk_pref_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `ctdesenvolvimento_decesaro_usuario` (`id`) ON DELETE CASCADE
@@ -288,6 +289,74 @@ CREATE TABLE IF NOT EXISTS `ctdesenvolvimento_decesaro_notificacao_lembrete` (
   KEY `ix_lembrete_status_agendado` (`status`, `agendado_para`),
   CONSTRAINT `fk_lembrete_evento` FOREIGN KEY (`id_evento`) REFERENCES `ctdesenvolvimento_decesaro_evento` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_lembrete_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `ctdesenvolvimento_decesaro_usuario` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 20. Tabela: Notificacao (Notificações do Usuário no Sistema)
+CREATE TABLE IF NOT EXISTS `ctdesenvolvimento_decesaro_notificacao` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `id_usuario` INT UNSIGNED NOT NULL,
+  `titulo` VARCHAR(200) NOT NULL,
+  `mensagem` TEXT NOT NULL,
+  `url` VARCHAR(500) NULL,
+  `tipo` VARCHAR(50) NOT NULL DEFAULT 'sistema',
+  `lida` CHAR(1) NOT NULL DEFAULT 'N',
+  `lida_em` DATETIME NULL,
+  `criado_em` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_notif_usuario_lida` (`id_usuario`, `lida`, `criado_em`),
+  CONSTRAINT `fk_notif_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `ctdesenvolvimento_decesaro_usuario` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 21. Tabela: PushSubscription (Inscrições Web Push)
+CREATE TABLE IF NOT EXISTS `ctdesenvolvimento_decesaro_push_subscription` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `id_usuario` INT UNSIGNED NOT NULL,
+  `endpoint` TEXT NOT NULL,
+  `endpoint_hash` VARCHAR(64) NOT NULL,
+  `p256dh` TEXT NOT NULL,
+  `auth` VARCHAR(255) NOT NULL,
+  `user_agent` VARCHAR(255) NULL,
+  `ativo` CHAR(1) NOT NULL DEFAULT 'S',
+  `criado_em` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `atualizado_em` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_push_endpoint_hash` (`endpoint_hash`),
+  KEY `ix_push_usuario_ativo` (`id_usuario`, `ativo`),
+  CONSTRAINT `fk_push_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `ctdesenvolvimento_decesaro_usuario` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 22. Tabela: NotificacaoCampanha (Histórico de Envios Administrativos)
+CREATE TABLE IF NOT EXISTS `ctdesenvolvimento_decesaro_notificacao_campanha` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `titulo` VARCHAR(200) NOT NULL,
+  `mensagem` TEXT NOT NULL,
+  `url` VARCHAR(500) NULL,
+  `publico_alvo` VARCHAR(100) NOT NULL DEFAULT 'todos',
+  `canais` VARCHAR(100) NOT NULL DEFAULT 'sistema,push',
+  `total_destinatarios` INT UNSIGNED NOT NULL DEFAULT 0,
+  `total_push_enviados` INT UNSIGNED NOT NULL DEFAULT 0,
+  `total_push_sucesso` INT UNSIGNED NOT NULL DEFAULT 0,
+  `criado_por` INT UNSIGNED NULL,
+  `criado_em` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_campanha_criado_em` (`criado_em`),
+  CONSTRAINT `fk_campanha_criador` FOREIGN KEY (`criado_por`) REFERENCES `ctdesenvolvimento_decesaro_usuario` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 23. Tabela: LembrarToken (Autenticação Persistente / Lembrar de Mim)
+CREATE TABLE IF NOT EXISTS `ctdesenvolvimento_decesaro_lembrar_token` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `id_usuario` INT UNSIGNED NOT NULL,
+  `selector` VARCHAR(64) NOT NULL,
+  `token_hash` VARCHAR(64) NOT NULL,
+  `expira_em` DATETIME NOT NULL,
+  `criado_em` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `ultimo_uso` DATETIME NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_lembrar_selector` (`selector`),
+  KEY `ix_lembrar_usuario` (`id_usuario`),
+  KEY `ix_lembrar_expira` (`expira_em`),
+  CONSTRAINT `fk_lembrar_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `ctdesenvolvimento_decesaro_usuario` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

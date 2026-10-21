@@ -202,4 +202,169 @@ class ApiController
 
         Response::json(['success' => true]);
     }
+
+    public function notificacoes(): void
+    {
+        Auth::requireAuth();
+        $user = Auth::user();
+        $userId = (int)$user['id'];
+
+        $pdo = Database::getConnection();
+        $notifTable = Database::table('notificacao');
+
+        // Total não lidas
+        $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM `{$notifTable}` WHERE id_usuario = ? AND lida = 'N'");
+        $stmtCount->execute([$userId]);
+        $naoLidas = (int)$stmtCount->fetchColumn();
+
+        // Lista das últimas 50 notificações
+        $stmtList = $pdo->prepare("
+            SELECT id, titulo, mensagem, url, tipo, lida, lida_em, criado_em
+            FROM `{$notifTable}`
+            WHERE id_usuario = ?
+            ORDER BY criado_em DESC
+            LIMIT 50
+        ");
+        $stmtList->execute([$userId]);
+        $items = $stmtList->fetchAll(PDO::FETCH_ASSOC);
+
+        Response::json([
+            'success' => true,
+            'unread_count' => $naoLidas,
+            'items' => $items
+        ]);
+    }
+
+    public function notificacaoMarcarLida(): void
+    {
+        Auth::requireAuth();
+        $user = Auth::user();
+        $userId = (int)$user['id'];
+
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $id = isset($input['id']) ? (int)$input['id'] : 0;
+
+        if ($id <= 0) {
+            Response::json(['success' => false, 'message' => 'Notificação inválida.'], 400);
+        }
+
+        $pdo = Database::getConnection();
+        $notifTable = Database::table('notificacao');
+        $stmt = $pdo->prepare("UPDATE `{$notifTable}` SET lida = 'S', lida_em = NOW() WHERE id = ? AND id_usuario = ?");
+        $stmt->execute([$id, $userId]);
+
+        Response::json(['success' => true, 'message' => 'Notificação marcada como lida.']);
+    }
+
+    public function notificacaoMarcarTodasLidas(): void
+    {
+        Auth::requireAuth();
+        $user = Auth::user();
+        $userId = (int)$user['id'];
+
+        $pdo = Database::getConnection();
+        $notifTable = Database::table('notificacao');
+        $stmt = $pdo->prepare("UPDATE `{$notifTable}` SET lida = 'S', lida_em = NOW() WHERE id_usuario = ? AND lida = 'N'");
+        $stmt->execute([$userId]);
+
+        Response::json(['success' => true, 'message' => 'Todas as notificações foram marcadas como lidas.']);
+    }
+
+    public function pushPublicKey(): void
+    {
+        Auth::requireAuth();
+        Response::json([
+            'success' => true,
+            'publicKey' => \App\Services\WebPushService::getPublicKey()
+        ]);
+    }
+
+    public function pushSubscribe(): void
+    {
+        Auth::requireAuth();
+        $user = Auth::user();
+        $userId = (int)$user['id'];
+
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $endpoint = trim((string)($input['endpoint'] ?? ''));
+        $keys = $input['keys'] ?? [];
+        $p256dh = trim((string)($keys['p256dh'] ?? ($input['p256dh'] ?? '')));
+        $auth = trim((string)($keys['auth'] ?? ($input['auth'] ?? '')));
+
+        if (empty($endpoint) || empty($p256dh) || empty($auth)) {
+            Response::json(['success' => false, 'message' => 'Dados de inscrição push inválidos.'], 400);
+        }
+
+        $endpointHash = hash('sha256', $endpoint);
+        $userAgent = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
+
+        $pdo = Database::getConnection();
+        $table = Database::table('push_subscription');
+        $stmt = $pdo->prepare("
+            INSERT INTO `{$table}` (id_usuario, endpoint, endpoint_hash, p256dh, auth, user_agent, ativo, atualizado_em)
+            VALUES (?, ?, ?, ?, ?, ?, 'S', NOW())
+            ON DUPLICATE KEY UPDATE 
+                id_usuario = VALUES(id_usuario),
+                endpoint = VALUES(endpoint),
+                p256dh = VALUES(p256dh),
+                auth = VALUES(auth),
+                user_agent = VALUES(user_agent),
+                ativo = 'S',
+                atualizado_em = NOW()
+        ");
+        $stmt->execute([$userId, $endpoint, $endpointHash, $p256dh, $auth, $userAgent]);
+
+        // Garantir que a preferência do usuário esteja ativa
+        $prefTable = Database::table('preferencia_usuario');
+        $pdo->prepare("
+            INSERT INTO `{$prefTable}` (id_usuario, notificacoes_push, atualizado_em)
+            VALUES (?, 'S', NOW())
+            ON DUPLICATE KEY UPDATE notificacoes_push = 'S', atualizado_em = NOW()
+        ")->execute([$userId]);
+
+        Response::json(['success' => true, 'message' => 'Dispositivo inscrito com sucesso para notificações push!']);
+    }
+
+    public function pushUnsubscribe(): void
+    {
+        Auth::requireAuth();
+        $user = Auth::user();
+        $userId = (int)$user['id'];
+
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $endpoint = trim((string)($input['endpoint'] ?? ''));
+
+        $pdo = Database::getConnection();
+        $table = Database::table('push_subscription');
+
+        if (!empty($endpoint)) {
+            $endpointHash = hash('sha256', $endpoint);
+            $stmt = $pdo->prepare("UPDATE `{$table}` SET ativo = 'N', atualizado_em = NOW() WHERE endpoint_hash = ? AND id_usuario = ?");
+            $stmt->execute([$endpointHash, $userId]);
+        } else {
+            $stmt = $pdo->prepare("UPDATE `{$table}` SET ativo = 'N', atualizado_em = NOW() WHERE id_usuario = ?");
+            $stmt->execute([$userId]);
+        }
+
+        Response::json(['success' => true, 'message' => 'Inscrição push desativada com sucesso.']);
+    }
+
+    public function pushTest(): void
+    {
+        Auth::requireAuth();
+        $user = Auth::user();
+        $userId = (int)$user['id'];
+
+        $res = \App\Services\WebPushService::sendToUser($userId, [
+            'title' => 'Teste de Notificação Push',
+            'body' => 'Olá ' . $user['nome'] . '! As notificações push estão funcionando perfeitamente.',
+            'url' => '/desenvolvimento/perfil'
+        ]);
+
+        Response::json([
+            'success' => true,
+            'message' => 'Disparo de teste realizado!',
+            'details' => $res
+        ]);
+    }
 }

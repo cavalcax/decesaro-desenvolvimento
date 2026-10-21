@@ -21,11 +21,14 @@ class AuthController
             Response::redirect('/inicio');
         }
 
+        $savedEmail = $_COOKIE['decesaro_saved_email'] ?? '';
+
         Response::view('auth/login', [
             'pageTitle' => 'Acesso à Plataforma',
             'error' => null,
             'success' => null,
-            'oldEmail' => ''
+            'oldEmail' => $savedEmail,
+            'remember' => !empty($savedEmail)
         ], 'layouts/auth');
     }
 
@@ -38,13 +41,15 @@ class AuthController
 
         $email = trim($_POST['email'] ?? '');
         $password = (string) ($_POST['password'] ?? '');
+        $remember = !empty($_POST['remember']);
         $ip = Security::getClientIp();
 
         if (empty($email) || empty($password)) {
             Response::view('auth/login', [
                 'pageTitle' => 'Acesso à Plataforma',
                 'error' => 'Por favor, informe seu e-mail e senha.',
-                'oldEmail' => $email
+                'oldEmail' => $email,
+                'remember' => $remember
             ], 'layouts/auth');
             return;
         }
@@ -54,7 +59,8 @@ class AuthController
             Response::view('auth/login', [
                 'pageTitle' => 'Acesso Bloqueado',
                 'error' => 'Muitas tentativas incorretas. Seu acesso está temporariamente bloqueado por 15 minutos.',
-                'oldEmail' => $email
+                'oldEmail' => $email,
+                'remember' => $remember
             ], 'layouts/auth');
             return;
         }
@@ -70,7 +76,8 @@ class AuthController
             Response::view('auth/login', [
                 'pageTitle' => 'Acesso à Plataforma',
                 'error' => 'E-mail ou senha incorretos.',
-                'oldEmail' => $email
+                'oldEmail' => $email,
+                'remember' => $remember
             ], 'layouts/auth');
             return;
         }
@@ -79,15 +86,37 @@ class AuthController
             Response::view('auth/login', [
                 'pageTitle' => 'Acesso Desativado',
                 'error' => 'Este usuário está inativo no sistema. Contate o comitê.',
-                'oldEmail' => $email
+                'oldEmail' => $email,
+                'remember' => $remember
             ], 'layouts/auth');
             return;
         }
 
-        // Sucesso: registrar e autenticar
+        // Sucesso: registrar e autenticar com suporte a "Lembrar de mim"
         Auth::recordLoginAttempt($email, $ip, true);
         Auth::clearLoginAttempts($email, $ip);
-        Auth::login($user);
+        Auth::login($user, $remember);
+
+        // Salvar e-mail lembrado para conveniência
+        if ($remember) {
+            setcookie('decesaro_saved_email', $email, [
+                'expires' => time() + (86400 * 30),
+                'path' => '/',
+                'domain' => '',
+                'secure' => Security::isHttps(),
+                'httponly' => false,
+                'samesite' => 'Lax'
+            ]);
+        } else {
+            setcookie('decesaro_saved_email', '', [
+                'expires' => time() - 3600,
+                'path' => '/',
+                'domain' => '',
+                'secure' => Security::isHttps(),
+                'httponly' => false,
+                'samesite' => 'Lax'
+            ]);
+        }
 
         // Carregar preferência de tema do usuário
         try {
