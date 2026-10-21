@@ -228,10 +228,10 @@ class AdminController
         if ($this->isAjax()) {
             $search = trim($_GET['search'] ?? '');
             if ($search !== '') {
-                $stmt = $pdo->prepare("SELECT id, descricao, idade_inicial, idade_final FROM `{$table}` WHERE descricao LIKE ? OR idade_inicial LIKE ? OR idade_final LIKE ? ORDER BY idade_inicial ASC");
-                $stmt->execute(["%{$search}%", "%{$search}%", "%{$search}%"]);
+                $stmt = $pdo->prepare("SELECT id, descricao FROM `{$table}` WHERE descricao LIKE ? ORDER BY id ASC");
+                $stmt->execute(["%{$search}%"]);
             } else {
-                $stmt = $pdo->query("SELECT id, descricao, idade_inicial, idade_final FROM `{$table}` ORDER BY idade_inicial ASC");
+                $stmt = $pdo->query("SELECT id, descricao FROM `{$table}` ORDER BY id ASC");
             }
             $items = $stmt->fetchAll();
             Response::json(['success' => true, 'data' => ['items' => $items, 'total' => count($items)]]);
@@ -245,8 +245,6 @@ class AdminController
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $id = !empty($input['id']) ? (int)$input['id'] : null;
         $desc = trim($input['descricao'] ?? '');
-        $idadeIni = (int)($input['idade_inicial'] ?? 0);
-        $idadeFim = (int)($input['idade_final'] ?? 120);
 
         if (empty($desc)) {
             Response::json(['success' => false, 'message' => 'Informe a descrição do nível.'], 400);
@@ -256,12 +254,12 @@ class AdminController
         $table = Database::table('nivel');
 
         if ($id) {
-            $stmt = $pdo->prepare("UPDATE `{$table}` SET descricao=?, idade_inicial=?, idade_final=?, atualizado_em=NOW() WHERE id=?");
-            $stmt->execute([$desc, $idadeIni, $idadeFim, $id]);
+            $stmt = $pdo->prepare("UPDATE `{$table}` SET descricao=?, atualizado_em=NOW() WHERE id=?");
+            $stmt->execute([$desc, $id]);
             Audit::log('EDITOU_NIVEL', 'nivel', $id);
         } else {
-            $stmt = $pdo->prepare("INSERT INTO `{$table}` (descricao, idade_inicial, idade_final) VALUES (?, ?, ?)");
-            $stmt->execute([$desc, $idadeIni, $idadeFim]);
+            $stmt = $pdo->prepare("INSERT INTO `{$table}` (descricao) VALUES (?)");
+            $stmt->execute([$desc]);
             $newId = (int)$pdo->lastInsertId();
             Audit::log('CRIOU_NIVEL', 'nivel', $newId);
         }
@@ -292,10 +290,10 @@ class AdminController
         if ($this->isAjax()) {
             $search = trim($_GET['search'] ?? '');
             if ($search !== '') {
-                $stmt = $pdo->prepare("SELECT id, descricao, subtitulo, icone, slug, ordem FROM `{$table}` WHERE descricao LIKE ? OR subtitulo LIKE ? OR slug LIKE ? ORDER BY ordem ASC");
+                $stmt = $pdo->prepare("SELECT id, descricao, subtitulo, icone, slug, idade_minima, idade_maxima, ordem FROM `{$table}` WHERE descricao LIKE ? OR subtitulo LIKE ? OR slug LIKE ? ORDER BY ordem ASC");
                 $stmt->execute(["%{$search}%", "%{$search}%", "%{$search}%"]);
             } else {
-                $stmt = $pdo->query("SELECT id, descricao, subtitulo, icone, slug, ordem FROM `{$table}` ORDER BY ordem ASC");
+                $stmt = $pdo->query("SELECT id, descricao, subtitulo, icone, slug, idade_minima, idade_maxima, ordem FROM `{$table}` ORDER BY ordem ASC");
             }
             $items = $stmt->fetchAll();
             Response::json(['success' => true, 'data' => ['items' => $items, 'total' => count($items)]]);
@@ -312,6 +310,8 @@ class AdminController
         $sub = trim($input['subtitulo'] ?? '');
         $icone = trim($input['icone'] ?? 'fa-folder');
         $slug = trim($input['slug'] ?? '');
+        $idadeMin = (int)($input['idade_minima'] ?? 0);
+        $idadeMax = !empty($input['idade_maxima']) ? (int)$input['idade_maxima'] : null;
         $ordem = (int)($input['ordem'] ?? 0);
 
         if (empty($desc) || empty($slug)) {
@@ -322,12 +322,12 @@ class AdminController
         $table = Database::table('raia');
 
         if ($id) {
-            $stmt = $pdo->prepare("UPDATE `{$table}` SET descricao=?, subtitulo=?, icone=?, slug=?, ordem=? WHERE id=?");
-            $stmt->execute([$desc, $sub, $icone, $slug, $ordem, $id]);
+            $stmt = $pdo->prepare("UPDATE `{$table}` SET descricao=?, subtitulo=?, icone=?, slug=?, idade_minima=?, idade_maxima=?, ordem=? WHERE id=?");
+            $stmt->execute([$desc, $sub, $icone, $slug, $idadeMin, $idadeMax, $ordem, $id]);
             Audit::log('EDITOU_RAIA', 'raia', $id);
         } else {
-            $stmt = $pdo->prepare("INSERT INTO `{$table}` (descricao, subtitulo, icone, slug, ordem) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$desc, $sub, $icone, $slug, $ordem]);
+            $stmt = $pdo->prepare("INSERT INTO `{$table}` (descricao, subtitulo, icone, slug, idade_minima, idade_maxima, ordem) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$desc, $sub, $icone, $slug, $idadeMin, $idadeMax, $ordem]);
             $newId = (int)$pdo->lastInsertId();
             Audit::log('CRIOU_RAIA', 'raia', $newId);
         }
@@ -355,7 +355,6 @@ class AdminController
         $pdo = Database::getConnection();
         $cTable = Database::table('raia_conteudo');
         $rTable = Database::table('raia');
-        $rcnTable = Database::table('raia_conteudo_nivel');
 
         if ($this->isAjax()) {
             $raiaId = !empty($_GET['raia_id']) ? (int)$_GET['raia_id'] : null;
@@ -377,8 +376,7 @@ class AdminController
 
             $stmt = $pdo->prepare("
                 SELECT c.id, c.descricao, c.subtitulo, c.detalhes, c.id_raia, c.ordem, c.ativo,
-                       r.descricao as raia_descricao,
-                       (SELECT GROUP_CONCAT(id_nivel) FROM `{$rcnTable}` WHERE id_raia_conteudo = c.id) as niveis_ids
+                       r.descricao as raia_descricao
                 FROM `{$cTable}` c
                 JOIN `{$rTable}` r ON r.id = c.id_raia
                 WHERE {$whereClause}
@@ -390,15 +388,12 @@ class AdminController
             Response::json(['success' => true, 'data' => ['items' => $items, 'total' => count($items)]]);
         }
 
-        // Buscar raias e níveis para o formulário
-        $nTable = Database::table('nivel');
+        // Buscar raias para o formulário
         $raias = $pdo->query("SELECT id, descricao FROM `{$rTable}` ORDER BY ordem ASC")->fetchAll();
-        $niveis = $pdo->query("SELECT id, descricao FROM `{$nTable}` ORDER BY idade_inicial ASC")->fetchAll();
 
         Response::view('admin/conteudos', [
             'pageTitle' => 'Gestão de Conteúdos das Raias',
-            'raias' => $raias,
-            'niveis' => $niveis
+            'raias' => $raias
         ]);
     }
 
@@ -412,46 +407,26 @@ class AdminController
         $detalhes = trim($input['detalhes'] ?? '');
         $ordem = (int)($input['ordem'] ?? 0);
         $ativo = in_array($input['ativo'] ?? '', ['S', 'N']) ? $input['ativo'] : 'S';
-        $niveis = is_array($input['niveis'] ?? null) ? $input['niveis'] : [];
 
         if (empty($desc) || !$idRaia) {
             Response::json(['success' => false, 'message' => 'Selecione a raia e informe o título do conteúdo.'], 400);
         }
 
         $pdo = Database::getConnection();
-        $pdo->beginTransaction();
+        $cTable = Database::table('raia_conteudo');
 
-        try {
-            $cTable = Database::table('raia_conteudo');
-            $rcnTable = Database::table('raia_conteudo_nivel');
-
-            if ($id) {
-                $stmt = $pdo->prepare("UPDATE `{$cTable}` SET id_raia=?, descricao=?, subtitulo=?, detalhes=?, ordem=?, ativo=?, atualizado_em=NOW() WHERE id=?");
-                $stmt->execute([$idRaia, $desc, $sub, $detalhes, $ordem, $ativo, $id]);
-                $contentId = $id;
-            } else {
-                $stmt = $pdo->prepare("INSERT INTO `{$cTable}` (id_raia, descricao, subtitulo, detalhes, ordem, ativo) VALUES (?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$idRaia, $desc, $sub, $detalhes, $ordem, $ativo]);
-                $contentId = (int)$pdo->lastInsertId();
-            }
-
-            // Atualizar associação de níveis (RaiaConteudoNivel)
-            $pdo->prepare("DELETE FROM `{$rcnTable}` WHERE id_raia_conteudo = ?")->execute([$contentId]);
-            if (!empty($niveis)) {
-                $stmtNivel = $pdo->prepare("INSERT INTO `{$rcnTable}` (id_raia_conteudo, id_nivel) VALUES (?, ?)");
-                foreach ($niveis as $nid) {
-                    $stmtNivel->execute([$contentId, (int)$nid]);
-                }
-            }
-
-            $pdo->commit();
-            Audit::log($id ? 'EDITOU_CONTEUDO' : 'CRIOU_CONTEUDO', 'raia_conteudo', $contentId);
-
-            Response::json(['success' => true, 'message' => 'Conteúdo e níveis vinculados salvos com sucesso!']);
-        } catch (\Throwable $e) {
-            $pdo->rollBack();
-            Response::json(['success' => false, 'message' => 'Erro ao salvar conteúdo: ' . $e->getMessage()], 500);
+        if ($id) {
+            $stmt = $pdo->prepare("UPDATE `{$cTable}` SET id_raia=?, descricao=?, subtitulo=?, detalhes=?, ordem=?, ativo=?, atualizado_em=NOW() WHERE id=?");
+            $stmt->execute([$idRaia, $desc, $sub, $detalhes, $ordem, $ativo, $id]);
+            $contentId = $id;
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO `{$cTable}` (id_raia, descricao, subtitulo, detalhes, ordem, ativo) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$idRaia, $desc, $sub, $detalhes, $ordem, $ativo]);
+            $contentId = (int)$pdo->lastInsertId();
         }
+
+        Audit::log($id ? 'EDITOU_CONTEUDO' : 'CRIOU_CONTEUDO', 'raia_conteudo', $contentId);
+        Response::json(['success' => true, 'message' => 'Conteúdo salvo com sucesso!']);
     }
 
     public function conteudoExcluir(): void
@@ -495,7 +470,7 @@ class AdminController
             $whereClause = implode(' AND ', $where);
 
             $stmt = $pdo->prepare("
-                SELECT v.id, v.titulo, v.descricao, v.link_arquivo, v.id_raia_conteudo, v.exclusivo, v.duracao_segundos, v.ordem,
+                SELECT v.id, v.titulo, v.descricao, v.link_arquivo, v.id_raia_conteudo, v.exclusivo, v.idade_minima, v.idade_maxima, v.duracao_segundos, v.ordem,
                        c.descricao as conteudo_descricao, r.descricao as raia_descricao
                 FROM `{$vTable}` v
                 JOIN `{$cTable}` c ON c.id = v.id_raia_conteudo
@@ -531,6 +506,8 @@ class AdminController
         $link = trim($input['link_arquivo'] ?? '');
         $idConteudo = (int)($input['id_raia_conteudo'] ?? 0);
         $exclusivo = in_array($input['exclusivo'] ?? '', ['Sim', 'Não']) ? $input['exclusivo'] : 'Sim';
+        $idadeMin = (int)($input['idade_minima'] ?? 0);
+        $idadeMax = !empty($input['idade_maxima']) ? (int)$input['idade_maxima'] : null;
         $duracao = Format::parseDuration($input['duracao_segundos'] ?? ($input['duracao'] ?? 0));
         $ordem = (int)($input['ordem'] ?? 0);
 
@@ -542,12 +519,12 @@ class AdminController
         $vTable = Database::table('video');
 
         if ($id) {
-            $stmt = $pdo->prepare("UPDATE `{$vTable}` SET titulo=?, descricao=?, link_arquivo=?, id_raia_conteudo=?, exclusivo=?, duracao_segundos=?, ordem=?, atualizado_em=NOW() WHERE id=?");
-            $stmt->execute([$titulo, $descricao, $link, $idConteudo, $exclusivo, $duracao, $ordem, $id]);
+            $stmt = $pdo->prepare("UPDATE `{$vTable}` SET titulo=?, descricao=?, link_arquivo=?, id_raia_conteudo=?, exclusivo=?, idade_minima=?, idade_maxima=?, duracao_segundos=?, ordem=?, atualizado_em=NOW() WHERE id=?");
+            $stmt->execute([$titulo, $descricao, $link, $idConteudo, $exclusivo, $idadeMin, $idadeMax, $duracao, $ordem, $id]);
             Audit::log('EDITOU_VIDEO', 'video', $id);
         } else {
-            $stmt = $pdo->prepare("INSERT INTO `{$vTable}` (titulo, descricao, link_arquivo, id_raia_conteudo, exclusivo, duracao_segundos, ordem) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$titulo, $descricao, $link, $idConteudo, $exclusivo, $duracao, $ordem]);
+            $stmt = $pdo->prepare("INSERT INTO `{$vTable}` (titulo, descricao, link_arquivo, id_raia_conteudo, exclusivo, idade_minima, idade_maxima, duracao_segundos, ordem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$titulo, $descricao, $link, $idConteudo, $exclusivo, $idadeMin, $idadeMax, $duracao, $ordem]);
             $newId = (int)$pdo->lastInsertId();
             Audit::log('CRIOU_VIDEO', 'video', $newId);
         }

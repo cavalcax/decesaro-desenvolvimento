@@ -33,12 +33,9 @@ CREATE TABLE IF NOT EXISTS `ctdesenvolvimento_decesaro_usuario` (
 CREATE TABLE IF NOT EXISTS `ctdesenvolvimento_decesaro_nivel` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `descricao` VARCHAR(120) NOT NULL,
-  `idade_inicial` INT NOT NULL,
-  `idade_final` INT NOT NULL,
   `criado_em` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `atualizado_em` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `ix_nivel_idades` (`idade_inicial`, `idade_final`)
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. Tabela: Raia
@@ -48,11 +45,14 @@ CREATE TABLE IF NOT EXISTS `ctdesenvolvimento_decesaro_raia` (
   `subtitulo` VARCHAR(255) NULL,
   `icone` VARCHAR(50) NOT NULL DEFAULT 'fa-folder',
   `slug` VARCHAR(50) NOT NULL,
+  `idade_minima` INT NOT NULL DEFAULT 0,
+  `idade_maxima` INT NULL DEFAULT NULL,
   `ordem` INT NOT NULL DEFAULT 0,
   `criado_em` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_raia_slug` (`slug`),
-  KEY `ix_raia_ordem` (`ordem`)
+  KEY `ix_raia_ordem` (`ordem`),
+  KEY `ix_raia_idades` (`idade_minima`, `idade_maxima`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 4. Tabela: RaiaConteudo
@@ -72,17 +72,7 @@ CREATE TABLE IF NOT EXISTS `ctdesenvolvimento_decesaro_raia_conteudo` (
   CONSTRAINT `fk_conteudo_raia` FOREIGN KEY (`id_raia`) REFERENCES `ctdesenvolvimento_decesaro_raia` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 5. Tabela: RaiaConteudoNivel
-CREATE TABLE IF NOT EXISTS `ctdesenvolvimento_decesaro_raia_conteudo_nivel` (
-  `id_raia_conteudo` INT UNSIGNED NOT NULL,
-  `id_nivel` INT UNSIGNED NOT NULL,
-  PRIMARY KEY (`id_raia_conteudo`, `id_nivel`),
-  KEY `ix_rcn_nivel` (`id_nivel`),
-  CONSTRAINT `fk_rcn_conteudo` FOREIGN KEY (`id_raia_conteudo`) REFERENCES `ctdesenvolvimento_decesaro_raia_conteudo` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_rcn_nivel` FOREIGN KEY (`id_nivel`) REFERENCES `ctdesenvolvimento_decesaro_nivel` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- 6. Tabela: Video
+-- 5. Tabela: Video
 CREATE TABLE IF NOT EXISTS `ctdesenvolvimento_decesaro_video` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `titulo` VARCHAR(200) NOT NULL,
@@ -90,6 +80,8 @@ CREATE TABLE IF NOT EXISTS `ctdesenvolvimento_decesaro_video` (
   `link_arquivo` VARCHAR(500) NOT NULL,
   `id_raia_conteudo` INT UNSIGNED NOT NULL,
   `exclusivo` ENUM('Sim', 'Não') NOT NULL DEFAULT 'Sim',
+  `idade_minima` INT NOT NULL DEFAULT 0,
+  `idade_maxima` INT NULL DEFAULT NULL,
   `duracao_segundos` INT UNSIGNED NOT NULL DEFAULT 0,
   `ordem` INT NOT NULL DEFAULT 0,
   `criado_em` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -97,6 +89,7 @@ CREATE TABLE IF NOT EXISTS `ctdesenvolvimento_decesaro_video` (
   PRIMARY KEY (`id`),
   KEY `ix_video_conteudo_ordem` (`id_raia_conteudo`, `ordem`),
   KEY `ix_video_exclusivo` (`exclusivo`),
+  KEY `ix_video_idades` (`idade_minima`, `idade_maxima`),
   CONSTRAINT `fk_video_conteudo` FOREIGN KEY (`id_raia_conteudo`) REFERENCES `ctdesenvolvimento_decesaro_raia_conteudo` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

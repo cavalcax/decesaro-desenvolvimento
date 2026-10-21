@@ -114,41 +114,62 @@ class TestRunner
 
     private function testAgeAndLevelEligibility(): void
     {
-        echo "\n3. Regras de Idade e Elegibilidade por Nível (Seção 9)\n";
+        echo "\n3. Regras de Idade e Elegibilidade por Raia (Matriz de Acesso)\n";
         // Nicolle: 18 anos -> Faixa 16 a 20 anos
         $age18 = 18;
         $bracket = Auth::formatAgeBracket($age18);
         $this->assert($bracket === '16 a 20 anos', "Cálculo de faixa etária para 18 anos ({$bracket})");
 
-        $levels18 = Auth::getUserLevels($age18);
-        $this->assert(!empty($levels18), "Identificação de níveis para idade 18 anos");
-        $levelDesc = $levels18[0]['descricao'] ?? '';
-        $this->assert(str_contains($levelDesc, '16 a 20'), "Nível correto vinculado: {$levelDesc}");
+        // Matriz de Acesso por Idade nas Raias (Nicolle, 18 anos):
+        // 1. Família (min 0) -> Liberado para todas as idades (inclusive 18 anos)
+        $canAccessRaia1 = Auth::canAccessRaia(2, 1);
+        $this->assert($canAccessRaia1, "Nicolle (18 anos) tem acesso liberado à Raia Família (idade mínima 0)");
 
-        // Verificar elegibilidade de conteúdo para Nicolle (user_id = 2)
-        // Conteúdo 1 ('Nossa história') liberado para todos os níveis
+        // 2. Propriedade (min 16) -> Liberado a partir de 16 anos (Nicolle tem 18)
+        $canAccessRaia2 = Auth::canAccessRaia(2, 2);
+        $this->assert($canAccessRaia2, "Nicolle (18 anos) tem acesso liberado à Raia Propriedade (idade mínima 16)");
+
+        // 3. Negócios (min 21) -> Bloqueado para 18 anos (liberado apenas a partir de 21 anos)
+        $canAccessRaia3 = Auth::canAccessRaia(2, 3);
+        $this->assert(!$canAccessRaia3, "Nicolle (18 anos) tem acesso BLOQUEADO à Raia Negócios (idade mínima 21)");
+
+        // 4. Competências Individuais / Outros Skills (min 16) -> Liberado a partir de 16 anos
+        $canAccessRaia4 = Auth::canAccessRaia(2, 4);
+        $this->assert($canAccessRaia4, "Nicolle (18 anos) tem acesso liberado à Raia Competências (idade mínima 16)");
+
+        // Conteúdo 1 ('Nossa história' na Raia Família) liberado para Nicolle
         $canAccessC1 = Auth::canAccessContent(2, 1);
-        $this->assert($canAccessC1, "Nicolle tem acesso a 'Nossa história' (liberado para seu nível)");
+        $this->assert($canAccessC1, "Nicolle tem acesso a conteúdo na Raia Família");
 
-        // Conteúdo 5 ('Governança familiar') liberado apenas para 21+ anos
-        $canAccessC5 = Auth::canAccessContent(2, 5);
-        $this->assert(!$canAccessC5, "Nicolle (18 anos) tem acesso bloqueado a 'Governança familiar' (21+ anos)");
+        // Conteúdo 11 ('Panorama dos Nossos Negócios' na Raia Negócios) bloqueado para Nicolle
+        $canAccessC11 = Auth::canAccessContent(2, 11);
+        $this->assert(!$canAccessC11, "Nicolle (18 anos) tem acesso bloqueado a conteúdo na Raia Negócios");
 
-        // Admin (user_id = 1) tem acesso total
-        $canAccessAdmin = Auth::canAccessContent(1, 5);
-        $this->assert($canAccessAdmin, "Administrador tem acesso irrestrito a todos os conteúdos");
+        // Administrador (user_id = 1) tem acesso irrestrito
+        $adminRaia = Auth::canAccessRaia(1, 3);
+        $this->assert($adminRaia, "Administrador tem acesso irrestrito a todas as raias (inclusive Negócios)");
+        $adminContent = Auth::canAccessContent(1, 11);
+        $this->assert($adminContent, "Administrador tem acesso irrestrito a todos os conteúdos");
     }
 
     private function testVideoExclusivityRule(): void
     {
-        echo "\n4. Regra de Vídeo Exclusivo vs Livre (Seção 9)\n";
-        // Vídeo 3: exclusivo = 'Não' (Livre)
+        echo "\n4. Regras de Vídeo por Idade e Exclusividade\n";
+        // Vídeo 3: exclusivo = 'Não' (Livre dentro da raia elegível)
         $canAccessV3 = Auth::canAccessVideo(2, 3);
-        $this->assert($canAccessV3, "Vídeo não exclusivo ('Não') acessível desconsiderando nível");
+        $this->assert($canAccessV3, "Vídeo não exclusivo ('Não') acessível dentro da raia permitida");
 
-        // Vídeo 1: exclusivo = 'Sim' no Conteúdo 1 (Elegível para Nicolle)
+        // Vídeo 1: exclusivo = 'Sim', idade_minima = 0 (Elegível para Nicolle)
         $canAccessV1 = Auth::canAccessVideo(2, 1);
-        $this->assert($canAccessV1, "Vídeo exclusivo ('Sim') em conteúdo elegível é acessível");
+        $this->assert($canAccessV1, "Vídeo exclusivo ('Sim') com idade mínima 0 é acessível para Nicolle (18 anos)");
+
+        // Vídeo 7: exclusivo = 'Sim', idade_minima = 21 (na Raia Negócios) -> Bloqueado para Nicolle (18 anos)
+        $canAccessV7 = Auth::canAccessVideo(2, 7);
+        $this->assert(!$canAccessV7, "Vídeo exclusivo ('Sim') com idade mínima 21 é bloqueado para Nicolle (18 anos)");
+
+        // Administrador tem acesso a qualquer vídeo
+        $adminV7 = Auth::canAccessVideo(1, 7);
+        $this->assert($adminV7, "Administrador tem acesso irrestrito ao vídeo de idade restrita");
     }
 
     private function testVideoProgressAndCompletion(): void

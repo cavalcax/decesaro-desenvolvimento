@@ -1,6 +1,5 @@
 <?php
 /** @var array $raias */
-/** @var array $niveis */
 ?>
 
 <div class="space-y-6">
@@ -10,7 +9,7 @@
     <div>
       <span class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Administração</span>
       <h1 class="text-2xl font-bold font-serif text-slate-900 dark:text-white mt-0.5">Gestão de Conteúdos das Raias</h1>
-      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Organização dos módulos temáticos e associação com níveis de elegibilidade</p>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Organização dos módulos temáticos de cada raia de desenvolvimento</p>
     </div>
     <button onclick="openModalCreate()" class="px-4 py-2.5 rounded-xl bg-navy-900 hover:bg-navy-800 dark:bg-amber-500 dark:hover:bg-amber-600 text-white dark:text-slate-950 text-xs font-bold shadow-md transition-all flex items-center gap-2">
       <i class="fa-solid fa-plus text-xs"></i>
@@ -103,22 +102,6 @@
           </select>
         </div>
 
-        <!-- Níveis Elegíveis (Associação RaiaConteudoNivel): 12 cols -->
-        <div class="col-span-12">
-          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            Níveis de Formação Elegíveis (RaiaConteudoNivel) *
-          </label>
-          <p class="text-[11px] text-slate-400 mb-1.5">Selecione quais faixas etárias têm acesso autorizado a este conteúdo:</p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700">
-            <?php foreach ($niveis as $n): ?>
-              <label class="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-white dark:hover:bg-slate-800 transition-colors">
-                <input type="checkbox" name="niveis[]" value="<?= $n['id'] ?>" class="c-nivel-check rounded border-slate-300 text-amber-500 focus:ring-amber-400">
-                <span class="text-slate-700 dark:text-slate-300 font-medium"><?= \App\Helpers\Security::e($n['descricao']) ?></span>
-              </label>
-            <?php endforeach; ?>
-          </div>
-        </div>
-
         <!-- Detalhes: 12 cols -->
         <div class="col-span-12">
           <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Descrição Detalhada / Objetivos</label>
@@ -163,16 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
         `
       },
       {
-        key: 'niveis_ids',
-        label: 'Níveis Elegíveis',
-        sortable: false,
-        render: (val) => {
-          if (!val) return '<span class="text-slate-400 italic text-[11px]">Nenhum nível vinculado</span>';
-          const count = val.split(',').length;
-          return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"><i class="fa-solid fa-check text-[9px]"></i> ${count} nível(is)</span>`;
-        }
-      },
-      {
         key: 'ativo',
         label: 'Status',
         sortable: false,
@@ -208,7 +181,6 @@ function applyFilters() {
 function openModalCreate() {
   document.getElementById('form-conteudo').reset();
   document.getElementById('c-id').value = '';
-  document.querySelectorAll('.c-nivel-check').forEach(c => c.checked = false);
   document.getElementById('modal-title').textContent = 'Novo Conteúdo';
   document.getElementById('modal-conteudo').classList.remove('hidden');
 }
@@ -222,12 +194,6 @@ function openModalEdit(row) {
   document.getElementById('c-detalhes').value = row.detalhes || '';
   document.getElementById('c-ordem').value = row.ordem || 0;
   document.getElementById('c-ativo').value = row.ativo || 'S';
-
-  const linkedNiveis = (row.niveis_ids || '').split(',').map(Number);
-  document.querySelectorAll('.c-nivel-check').forEach(cb => {
-    cb.checked = linkedNiveis.includes(parseInt(cb.value));
-  });
-
   document.getElementById('modal-title').textContent = 'Editar Conteúdo';
   document.getElementById('modal-conteudo').classList.remove('hidden');
 }
@@ -241,9 +207,6 @@ async function saveConteudo(e) {
   const form = e.target;
   const formData = new FormData(form);
 
-  const selectedNiveis = [];
-  document.querySelectorAll('.c-nivel-check:checked').forEach(c => selectedNiveis.push(parseInt(c.value)));
-
   const payload = {
     id: formData.get('id') || null,
     id_raia: formData.get('id_raia'),
@@ -251,9 +214,19 @@ async function saveConteudo(e) {
     subtitulo: formData.get('subtitulo'),
     detalhes: formData.get('detalhes'),
     ordem: formData.get('ordem'),
-    ativo: formData.get('ativo'),
-    niveis: selectedNiveis
+    ativo: formData.get('ativo')
   };
+
+  try {
+    const res = await apiRequest('/desenvolvimento/admin/conteudos/salvar', {
+      method: 'POST',
+      data: payload
+    });
+    closeModal();
+    showToast('success', res.message);
+    tableInstance.load();
+  } catch {}
+}
 
   try {
     const res = await apiRequest('/desenvolvimento/admin/conteudos/salvar', {

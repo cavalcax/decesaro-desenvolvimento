@@ -21,13 +21,11 @@ class JornadaController
         $pdo = Database::getConnection();
         $raiaTable = Database::table('raia');
         $conteudoTable = Database::table('raia_conteudo');
-        $rcnTable = Database::table('raia_conteudo_nivel');
-        $nivelTable = Database::table('nivel');
         $videoTable = Database::table('video');
         $progressoTable = Database::table('progresso_video');
 
         // Buscar raias com progresso detalhado
-        $stmtR = $pdo->query("SELECT id, descricao, subtitulo, icone, slug FROM `{$raiaTable}` ORDER BY ordem ASC");
+        $stmtR = $pdo->query("SELECT id, descricao, subtitulo, icone, slug, idade_minima, idade_maxima FROM `{$raiaTable}` ORDER BY ordem ASC");
         $raias = $stmtR->fetchAll();
 
         $raiasProgress = [];
@@ -37,30 +35,26 @@ class JornadaController
 
         foreach ($raias as $r) {
             $raiaId = (int)$r['id'];
+            $isAcessivel = Auth::canAccessRaia($userId, $raiaId);
 
             // Conteúdos da raia
             $stmtC = $pdo->prepare("
-                SELECT c.id, c.descricao,
-                       (SELECT COUNT(*) FROM `{$rcnTable}` rcn 
-                        JOIN `{$nivelTable}` n ON n.id = rcn.id_nivel 
-                        WHERE rcn.id_raia_conteudo = c.id 
-                          AND ? >= n.idade_inicial AND ? <= n.idade_final) as is_elegivel
+                SELECT c.id, c.descricao
                 FROM `{$conteudoTable}` c
                 WHERE c.id_raia = ? AND c.ativo = 'S'
                 ORDER BY c.ordem ASC
             ");
-            $stmtC->execute([$age, $age, $raiaId]);
+            $stmtC->execute([$raiaId]);
             $conteudos = $stmtC->fetchAll();
 
             $totalC = count($conteudos);
             $concluidosC = 0;
             $elegiveisC = 0;
 
-            foreach ($conteudos as $c) {
-                $isElegivel = ((int)$c['is_elegivel'] > 0) || Auth::isAdmin();
-                if ($isElegivel) {
-                    $elegiveisC++;
+            if ($isAcessivel) {
+                $elegiveisC = $totalC;
 
+                foreach ($conteudos as $c) {
                     // Vídeos do conteúdo
                     $stmtV = $pdo->prepare("
                         SELECT COUNT(v.id) as total_v,
@@ -84,7 +78,7 @@ class JornadaController
             }
 
             $percent = $elegiveisC > 0 ? round(($concluidosC / $elegiveisC) * 100) : 0;
-            $statusText = $percent == 100 ? 'Concluída' : ($percent > 0 ? 'Em andamento' : ($elegiveisC === 0 ? 'Bloqueada' : 'Não iniciado'));
+            $statusText = !$isAcessivel ? 'Bloqueada' : ($percent == 100 ? 'Concluída' : ($percent > 0 ? 'Em andamento' : 'Não iniciado'));
 
             $raiasProgress[] = [
                 'id' => $raiaId,

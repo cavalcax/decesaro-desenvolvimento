@@ -41,13 +41,11 @@ class RaiaController
         $pdo = Database::getConnection();
         $raiaTable = Database::table('raia');
         $conteudoTable = Database::table('raia_conteudo');
-        $rcnTable = Database::table('raia_conteudo_nivel');
-        $nivelTable = Database::table('nivel');
         $videoTable = Database::table('video');
         $progressoTable = Database::table('progresso_video');
 
-        // Buscar dados da raia
-        $stmtR = $pdo->prepare("SELECT id, descricao, subtitulo, icone, slug FROM `{$raiaTable}` WHERE slug = ? LIMIT 1");
+        // Buscar dados da raia com limites de idade
+        $stmtR = $pdo->prepare("SELECT id, descricao, subtitulo, icone, slug, idade_minima, idade_maxima FROM `{$raiaTable}` WHERE slug = ? LIMIT 1");
         $stmtR->execute([$slug]);
         $raia = $stmtR->fetch();
 
@@ -56,19 +54,16 @@ class RaiaController
         }
 
         $raiaId = (int)$raia['id'];
+        $isRaiaElegivel = Auth::canAccessRaia($userId, $raiaId);
 
-        // Buscar conteúdos da raia com verificação de elegibilidade
+        // Buscar conteúdos da raia
         $stmtC = $pdo->prepare("
-            SELECT c.id, c.descricao, c.subtitulo, c.detalhes, c.imagem, c.ordem,
-                   (SELECT COUNT(*) FROM `{$rcnTable}` rcn 
-                    JOIN `{$nivelTable}` n ON n.id = rcn.id_nivel 
-                    WHERE rcn.id_raia_conteudo = c.id 
-                      AND ? >= n.idade_inicial AND ? <= n.idade_final) as is_elegivel
+            SELECT c.id, c.descricao, c.subtitulo, c.detalhes, c.imagem, c.ordem
             FROM `{$conteudoTable}` c
             WHERE c.id_raia = ? AND c.ativo = 'S'
             ORDER BY c.ordem ASC
         ");
-        $stmtC->execute([$age, $age, $raiaId]);
+        $stmtC->execute([$raiaId]);
         $conteudos = $stmtC->fetchAll();
 
         // Para cada conteúdo, buscar vídeos e progresso do usuário
@@ -78,7 +73,7 @@ class RaiaController
         $elegiveisCount = 0;
 
         foreach ($conteudos as $c) {
-            $isElegivel = ((int)$c['is_elegivel'] > 0) || Auth::isAdmin();
+            $isElegivel = $isRaiaElegivel || Auth::isAdmin();
             if ($isElegivel) $elegiveisCount++;
 
             // Buscar vídeos
@@ -131,7 +126,8 @@ class RaiaController
             'conteudos' => $conteudosData,
             'progressoGeral' => $progressoGeral,
             'elegiveisCount' => $elegiveisCount,
-            'concluidosCount' => $concluidosCount
+            'concluidosCount' => $concluidosCount,
+            'isRaiaElegivel' => $isRaiaElegivel
         ]);
     }
 

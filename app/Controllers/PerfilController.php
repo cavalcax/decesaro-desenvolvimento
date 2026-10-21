@@ -22,9 +22,6 @@ class PerfilController
 
         $pdo = Database::getConnection();
         $raiaTable = Database::table('raia');
-        $conteudoTable = Database::table('raia_conteudo');
-        $rcnTable = Database::table('raia_conteudo_nivel');
-        $nivelTable = Database::table('nivel');
         $prefTable = Database::table('preferencia_usuario');
 
         // Buscar preferência do usuário
@@ -39,17 +36,7 @@ class PerfilController
         $elegibilidadeRaias = [];
         foreach ($raias as $r) {
             $raiaId = (int)$r['id'];
-
-            $stmtCheck = $pdo->prepare("
-                SELECT COUNT(*) 
-                FROM `{$conteudoTable}` c
-                JOIN `{$rcnTable}` rcn ON rcn.id_raia_conteudo = c.id
-                JOIN `{$nivelTable}` n ON n.id = rcn.id_nivel
-                WHERE c.id_raia = ? AND c.ativo = 'S'
-                  AND ? >= n.idade_inicial AND ? <= n.idade_final
-            ");
-            $stmtCheck->execute([$raiaId, $age, $age]);
-            $isDisponivel = ((int)$stmtCheck->fetchColumn() > 0) || Auth::isAdmin();
+            $isDisponivel = Auth::canAccessRaia($userId, $raiaId);
 
             $elegibilidadeRaias[] = [
                 'id' => $raiaId,

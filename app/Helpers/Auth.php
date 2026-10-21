@@ -143,26 +143,65 @@ class Auth
 
     public static function formatAgeBracket(int $age): string
     {
-        if ($age <= 15) return "0 a 15 anos";
+        if ($age <= 10) return "Até 10 anos";
+        if ($age <= 15) return "11 a 15 anos";
         if ($age <= 20) return "16 a 20 anos";
-        if ($age <= 35) return "21 a 35 anos";
-        return "36+ anos";
+        return "Acima de 21 anos";
     }
 
-    public static function getUserLevels(int $age): array
+    public static function getUserLevels(?int $age = null): array
     {
         $pdo = Database::getConnection();
         $table = Database::table('nivel');
-        $stmt = $pdo->prepare("SELECT id, descricao, idade_inicial, idade_final FROM `{$table}` WHERE ? >= idade_inicial AND ? <= idade_final ORDER BY idade_inicial ASC");
-        $stmt->execute([$age, $age]);
+        $stmt = $pdo->query("SELECT id, descricao FROM `{$table}` ORDER BY id ASC");
         return $stmt->fetchAll();
+    }
+
+    public static function canAccessRaia(int $userId, int $raiaId): bool
+    {
+        $pdo = Database::getConnection();
+        $uTable = Database::table('usuario');
+        $stmtU = $pdo->prepare("SELECT id, data_nascimento, tipo FROM `{$uTable}` WHERE id = ? LIMIT 1");
+        $stmtU->execute([$userId]);
+        $targetUser = $stmtU->fetch();
+
+        if (!$targetUser) {
+            return false;
+        }
+
+        // Administrador tem acesso irrestrito a todas as raias
+        if ($targetUser['tipo'] === 'Admin') {
+            return true;
+        }
+
+        $rTable = Database::table('raia');
+        $stmtR = $pdo->prepare("SELECT id, idade_minima, idade_maxima FROM `{$rTable}` WHERE id = ? LIMIT 1");
+        $stmtR->execute([$raiaId]);
+        $raia = $stmtR->fetch();
+
+        if (!$raia) {
+            return false;
+        }
+
+        $age = self::calculateAge($targetUser['data_nascimento']);
+        $idadeMin = (int)($raia['idade_minima'] ?? 0);
+        $idadeMax = $raia['idade_maxima'] !== null ? (int)$raia['idade_maxima'] : null;
+
+        if ($age < $idadeMin) {
+            return false;
+        }
+        if ($idadeMax !== null && $age > $idadeMax) {
+            return false;
+        }
+
+        return true;
     }
 
     public static function canAccessContent(int $userId, int $contentId): bool
     {
         $pdo = Database::getConnection();
         $uTable = Database::table('usuario');
-        $stmtU = $pdo->prepare("SELECT id, data_nascimento, tipo FROM `{$uTable}` WHERE id = ? LIMIT 1");
+        $stmtU = $pdo->prepare("SELECT id, tipo FROM `{$uTable}` WHERE id = ? LIMIT 1");
         $stmtU->execute([$userId]);
         $targetUser = $stmtU->fetch();
 
@@ -175,37 +214,37 @@ class Auth
             return true;
         }
 
-        $age = self::calculateAge($targetUser['data_nascimento']);
-        $rcnTable = Database::table('raia_conteudo_nivel');
-        $nivelTable = Database::table('nivel');
+        $cTable = Database::table('raia_conteudo');
+        $stmtC = $pdo->prepare("SELECT id, id_raia FROM `{$cTable}` WHERE id = ? LIMIT 1");
+        $stmtC->execute([$contentId]);
+        $content = $stmtC->fetch();
 
-        // Verificar se existe ligação entre o conteúdo e algum nível compatível com a idade do participante
-        $stmt = $pdo->prepare("
-            SELECT COUNT(*) 
-            FROM `{$rcnTable}` rcn
-            JOIN `{$nivelTable}` n ON n.id = rcn.id_nivel
-            WHERE rcn.id_raia_conteudo = ?
-              AND ? >= n.idade_inicial 
-              AND ? <= n.idade_final
-        ");
-        $stmt->execute([$contentId, $age, $age]);
-        return ((int)$stmt->fetchColumn()) > 0;
+        if (!$content) {
+            return false;
+        }
+
+        // Elegibilidade de conteúdo vinculada diretamente à elegibilidade da Raia
+        return self::canAccessRaia($userId, (int)$content['id_raia']);
     }
 
     public static function canAccessVideo(int $userId, int $videoId): bool
     {
         $pdo = Database::getConnection();
         $uTable = Database::table('usuario');
-        $stmtU = $pdo->prepare("SELECT id, tipo FROM `{$uTable}` WHERE id = ? LIMIT 1");
+        $stmtU = $pdo->prepare("SELECT id, data_nascimento, tipo FROM `{$uTable}` WHERE id = ? LIMIT 1");
         $stmtU->execute([$userId]);
         $targetUser = $stmtU->fetch();
 
-        if ($targetUser && $targetUser['tipo'] === 'Admin') {
+        if (!$targetUser) {
+            return false;
+        }
+
+        if ($targetUser['tipo'] === 'Admin') {
             return true;
         }
 
         $videoTable = Database::table('video');
-        $stmt = $pdo->prepare("SELECT id, id_raia_conteudo, exclusivo FROM `{$videoTable}` WHERE id = ? LIMIT 1");
+        $stmt = $pdo->prepare("SELECT id, id_raia_conteudo, exclusivo, idade_minima, idade_maxima FROM `{$videoTable}` WHERE id = ? LIMIT 1");
         $stmt->execute([$videoId]);
         $video = $stmt->fetch();
 
@@ -213,13 +252,29 @@ class Auth
             return false;
         }
 
-        // Se o vídeo não for exclusivo, qualquer usuário autenticado pode assistir
+        // Valida se o usuário tem permissão para a raia deste conteúdo
+        if (!self::canAccessContent($userId, (int)$video['id_raia_conteudo'])) {
+            return false;
+        }
+
+        // Se o vídeo não for exclusivo, qualquer participante elegível na raia pode assistir
         if ($video['exclusivo'] === 'Não') {
             return true;
         }
 
-        // Se for exclusivo, verificar elegibilidade pelo conteúdo
-        return self::canAccessContent($userId, (int)$video['id_raia_conteudo']);
+        // Se for exclusivo, valida o intervalo de idade configurado diretamente no vídeo
+        $age = self::calculateAge($targetUser['data_nascimento']);
+        $idadeMin = (int)($video['idade_minima'] ?? 0);
+        $idadeMax = $video['idade_maxima'] !== null ? (int)$video['idade_maxima'] : null;
+
+        if ($age < $idadeMin) {
+            return false;
+        }
+        if ($idadeMax !== null && $age > $idadeMax) {
+            return false;
+        }
+
+        return true;
     }
 
     public static function isLockedOut(string $email, string $ip): bool

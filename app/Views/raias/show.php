@@ -42,6 +42,22 @@
     </div>
   </div>
 
+  <?php if (empty($isRaiaElegivel) && !\App\Helpers\Auth::isAdmin()): ?>
+    <!-- Aviso de Raia Bloqueada por Faixa Etária -->
+    <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 flex items-start gap-3.5 shadow-sm">
+      <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-sm flex-shrink-0 mt-0.5">
+        <i class="fa-solid fa-lock"></i>
+      </div>
+      <div>
+        <h3 class="text-sm font-bold font-serif text-slate-900 dark:text-white">Raia Bloqueada por Idade</h3>
+        <p class="text-xs text-slate-600 dark:text-slate-300 mt-1">
+          Esta raia é destinada a participantes <strong><?= (int)($raia['idade_minima'] ?? 0) ?>+ anos</strong><?= !empty($raia['idade_maxima']) ? " (até {$raia['idade_maxima']} anos)" : "" ?>.
+          Os conteúdos e vídeos estão bloqueados para sua faixa etária atual e serão liberados automaticamente quando você atingir a idade recomendada.
+        </p>
+      </div>
+    </div>
+  <?php endif; ?>
+
   <!-- Abas de Navegação Interna da Raia (Visão geral, Atividades, Materiais - conforme layout.png) -->
   <div class="border-b border-slate-200 dark:border-slate-800">
     <nav class="flex space-x-6 text-sm font-medium">

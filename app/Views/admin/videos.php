@@ -87,17 +87,17 @@
           <p class="text-[11px] text-slate-400 mt-1">Compatível com links do Google Drive, YouTube ou streaming direto MP4/WebM.</p>
         </div>
 
-        <!-- Exclusivo: 4 cols -->
-        <div class="col-span-12 sm:col-span-4">
-          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Exclusivo (Restrição por Nível) *</label>
+        <!-- Exclusivo: 6 cols -->
+        <div class="col-span-12 sm:col-span-6">
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Exclusividade *</label>
           <select id="v-exclusivo" name="exclusivo" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
-            <option value="Sim">Sim (Restrito à faixa etária)</option>
-            <option value="Não">Não (Livre para todos)</option>
+            <option value="Sim">Sim (Restrito à faixa etária do vídeo)</option>
+            <option value="Não">Não (Livre para quem acessa a raia)</option>
           </select>
         </div>
 
-        <!-- Duração: 4 cols (Aceita Google Drive MM:SS ou Segundos) -->
-        <div class="col-span-12 sm:col-span-4">
+        <!-- Duração: 6 cols (Aceita Google Drive MM:SS ou Segundos) -->
+        <div class="col-span-12 sm:col-span-6">
           <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
             Duração * <span class="text-[11px] font-normal text-slate-400 dark:text-slate-500">(ex: 00:11 ou seg)</span>
           </label>
@@ -107,6 +107,20 @@
             <i class="fa-solid fa-clock text-[10px]"></i>
             <span id="v-duracao-preview-text">Equivale a 11 segundos</span>
           </div>
+        </div>
+
+        <!-- Idade Mínima: 4 cols -->
+        <div class="col-span-12 sm:col-span-4">
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Idade Mínima (anos) *</label>
+          <input type="number" id="v-idade-min" name="idade_minima" required min="0" max="120" value="0"
+                 class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50">
+        </div>
+
+        <!-- Idade Máxima: 4 cols -->
+        <div class="col-span-12 sm:col-span-4">
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Idade Máxima (opcional)</label>
+          <input type="number" id="v-idade-max" name="idade_maxima" min="0" max="120" placeholder="Sem limite"
+                 class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50">
         </div>
 
         <!-- Ordem: 4 cols -->
@@ -172,7 +186,23 @@ document.addEventListener('DOMContentLoaded', () => {
         key: 'exclusivo',
         label: 'Exclusividade',
         sortable: false,
-        render: (val) => `<span class="px-2 py-0.5 rounded text-[10px] font-bold ${val === 'Sim' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'}">${val === 'Sim' ? 'Exclusivo (Nível)' : 'Livre'}</span>`
+        render: (val) => `<span class="px-2 py-0.5 rounded text-[10px] font-bold ${val === 'Sim' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'}">${val === 'Sim' ? 'Exclusivo (Idade)' : 'Livre'}</span>`
+      },
+      {
+        key: 'idade_minima',
+        label: 'Faixa Etária',
+        sortable: false,
+        render: (val, row) => {
+          const min = val || 0;
+          const max = row.idade_maxima;
+          if (min == 0 && !max) {
+            return `<span class="text-slate-400 text-xs">Livre</span>`;
+          }
+          if (max) {
+            return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 font-mono">${min} a ${max} anos</span>`;
+          }
+          return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 font-mono">${min}+ anos</span>`;
+        }
       },
       {
         key: 'id',
@@ -264,6 +294,8 @@ function openModalCreate() {
   document.getElementById('form-video').reset();
   document.getElementById('v-id').value = '';
   document.getElementById('v-duracao').value = '00:11';
+  document.getElementById('v-idade-min').value = '0';
+  document.getElementById('v-idade-max').value = '';
   updateDurationPreview();
   document.getElementById('modal-title').textContent = 'Novo Vídeo';
   document.getElementById('modal-video').classList.remove('hidden');
@@ -277,6 +309,8 @@ function openModalEdit(row) {
   document.getElementById('v-link').value = row.link_arquivo;
   document.getElementById('v-id-conteudo').value = row.id_raia_conteudo;
   document.getElementById('v-exclusivo').value = row.exclusivo || 'Sim';
+  document.getElementById('v-idade-min').value = row.idade_minima ?? 0;
+  document.getElementById('v-idade-max').value = row.idade_maxima ?? '';
   
   const rawSecs = parseInt(row.duracao_segundos, 10) || 0;
   if (rawSecs < 60) {

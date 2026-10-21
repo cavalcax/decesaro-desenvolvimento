@@ -5,7 +5,7 @@
     <div>
       <span class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Administração</span>
       <h1 class="text-2xl font-bold font-serif text-slate-900 dark:text-white mt-0.5">Gestão de Níveis de Formação</h1>
-      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Configuração das faixas etárias que definem a elegibilidade de conteúdos</p>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Configuração dos níveis de formação e desenvolvimento</p>
     </div>
     <button onclick="openModalCreate()" class="px-4 py-2.5 rounded-xl bg-navy-900 hover:bg-navy-800 dark:bg-amber-500 dark:hover:bg-amber-600 text-white dark:text-slate-950 text-xs font-bold shadow-md transition-all flex items-center gap-2">
       <i class="fa-solid fa-plus text-xs"></i>
@@ -21,7 +21,7 @@
         <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
           <i class="fa-solid fa-magnifying-glass text-xs"></i>
         </span>
-        <input type="text" id="filter-search" class="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50" placeholder="Pesquisar por descrição ou faixa etária...">
+        <input type="text" id="filter-search" class="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50" placeholder="Pesquisar por descrição...">
       </div>
     </div>
   </div>
@@ -50,21 +50,7 @@
         <!-- Descrição: 12 cols -->
         <div class="col-span-12">
           <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Descrição do Nível *</label>
-          <input type="text" id="n-descricao" name="descricao" required placeholder="Ex: Juventude & Formação Inicial (16 a 20 anos)"
-                 class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50">
-        </div>
-
-        <!-- Idade Inicial: 6 cols -->
-        <div class="col-span-12 sm:col-span-6">
-          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Idade Inicial (inclusive) *</label>
-          <input type="number" id="n-idade-ini" name="idade_inicial" required min="0" max="120"
-                 class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50">
-        </div>
-
-        <!-- Idade Final: 6 cols -->
-        <div class="col-span-12 sm:col-span-6">
-          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Idade Final (inclusive) *</label>
-          <input type="number" id="n-idade-fim" name="idade_final" required min="0" max="120"
+          <input type="text" id="n-descricao" name="descricao" required placeholder="Ex: Juventude & Formação Inicial"
                  class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50">
         </div>
 
@@ -92,8 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
     endpoint: '/desenvolvimento/admin/niveis',
     columns: [
       { key: 'descricao', label: 'Descrição do Nível', sortable: false },
-      { key: 'idade_inicial', label: 'Idade Mínima', sortable: false, render: (val) => `<span class="font-mono">${val} anos</span>` },
-      { key: 'idade_final', label: 'Idade Máxima', sortable: false, render: (val) => `<span class="font-mono">${val} anos</span>` },
       {
         key: 'id',
         label: 'Ações',
@@ -124,8 +108,6 @@ function openModalEdit(row) {
   document.getElementById('form-nivel').reset();
   document.getElementById('n-id').value = row.id;
   document.getElementById('n-descricao').value = row.descricao;
-  document.getElementById('n-idade-ini').value = row.idade_inicial;
-  document.getElementById('n-idade-fim').value = row.idade_final;
   document.getElementById('modal-title').textContent = 'Editar Nível';
   document.getElementById('modal-nivel').classList.remove('hidden');
 }
